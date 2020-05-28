@@ -1,6 +1,24 @@
 require "../bacnet"
 
 module BACnet
+  # Header
+  enum RequestTypeIP4
+    BVCLResult                        =    0
+    WriteBroadcastDistributionTable   =    1
+    ReadBroadcastDistributionTable    =    2
+    ReadBroadcastDistributionTableAck =    3
+    ForwardedNPDU                     =    4
+    RegisterForeignDevice             =    5
+    ReadForeignDeviceTable            =    6
+    ReadForeignDeviceTableAck         =    7
+    DeleteForeignDeviceTableEntry     =    8
+    DistributeBroadcastToNetwork      =    9
+    OriginalUnicastNPDU               = 0x0a
+    OriginalBroadcastNPDU             = 0x0b
+    # Clause 24
+    SecureBVLL = 0x0c
+  end
+
   class IP4BVLCI < BinData
     endian :big
 

@@ -3,14 +3,14 @@ require "./services/*"
 require "./object"
 
 module BACnet
-  class Message
-    def initialize(@data_link, @network, @application = nil, @objects = [] of Object)
+  class IP4Message
+    def initialize(@data_link, @network = nil, @application = nil, @objects = [] of Object)
     end
 
     alias AppLayer = Nil | ConfirmedRequest | UnconfirmedRequest | SimpleAck | ComplexAck | SegmentAck | ErrorResponse | RejectResponse | AbortResponse
 
     property data_link : IP4BVLCI
-    property network : NPDU
+    property network : NPDU?
     property application : AppLayer?
     property objects : Array(Object)
 
@@ -22,7 +22,7 @@ module BACnet
       data.read_bytes(DataLinkIndicator)
     end
 
-    def self.from_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : Message
+    def self.from_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : IP4Message
       # Get message length
       indicator = hint(io)
       raise Error.new("only supports IPv4 datalink") unless indicator.is_ipv4?
@@ -34,6 +34,8 @@ module BACnet
 
       # Parse only the bytes that make up the message
       data_link = io.read_bytes(IP4BVLCI)
+      return self.new(data_link) unless data_link.request_type.forwarded_npdu? || data_link.request_type.original_unicast_npdu? || data_link.request_type.original_broadcast_npdu?
+
       network = io.read_bytes(NPDU)
       if network.network_layer_message
         self.new(data_link, network)
@@ -74,10 +76,12 @@ module BACnet
     def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : IO
       format = IO::ByteFormat::BigEndian
       io.write_bytes(@data_link, format)
-      io.write_bytes(@network, format)
-      if app = @application
-        io.write_bytes(app, format)
-        objects.each { |object| io.write_bytes(object, format) }
+      if net = @network
+        io.write_bytes(net, format)
+        if app = @application
+          io.write_bytes(app, format)
+          objects.each { |object| io.write_bytes(object, format) }
+        end
       end
       io
     end

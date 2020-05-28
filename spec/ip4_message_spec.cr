@@ -1,15 +1,16 @@
 require "./helper"
 
 module BACnet
-  describe Message do
+  describe IP4Message do
     it "should parse a who is request" do
       bytes = "810b000c0120ffff00ff1008".hexbytes
 
-      me = IO::Memory.new(bytes).read_bytes(Message)
-      me.network.destination.address.should eq(65535)
-      me.network.destination.mac_address_length.should eq(0)
-      me.network.destination_broadcast?.should be_true
-      me.network.hop_count.should eq(255)
+      me = IO::Memory.new(bytes).read_bytes(IP4Message)
+      net = me.network.not_nil!
+      net.destination.address.should eq(65535)
+      net.destination.mac_address_length.should eq(0)
+      net.destination_broadcast?.should be_true
+      net.hop_count.should eq(255)
 
       app = me.application
       case app
@@ -25,13 +26,14 @@ module BACnet
     it "should parse a i am request" do
       bytes = "810b00190120ffff00ff1000c4023fffff2201e09103220104".hexbytes
 
-      me = IO::Memory.new(bytes).read_bytes(Message)
+      me = IO::Memory.new(bytes).read_bytes(IP4Message)
       me.data_link.request_type.should eq(RequestTypeIP4::OriginalBroadcastNPDU)
 
-      me.network.destination.address.should eq(65535)
-      me.network.destination.mac_address_length.should eq(0)
-      me.network.destination_broadcast?.should be_true
-      me.network.hop_count.should eq(255)
+      net = me.network.not_nil!
+      net.destination.address.should eq(65535)
+      net.destination.mac_address_length.should eq(0)
+      net.destination_broadcast?.should be_true
+      net.hop_count.should eq(255)
 
       app = me.application
       case app
@@ -60,13 +62,14 @@ module BACnet
 
     it "should parse a confirmed request" do
       bytes = "810a0016012465910172ff00030a0c0c02015062191c".hexbytes
-      me = IO::Memory.new(bytes).read_bytes(Message)
+      me = IO::Memory.new(bytes).read_bytes(IP4Message)
       me.data_link.request_type.should eq(RequestTypeIP4::OriginalUnicastNPDU)
 
-      me.network.expecting_reply?.should eq(true)
-      me.network.destination.address.should eq(26001)
-      me.network.destination_mac.should eq("72")
-      me.network.hop_count.should eq(255)
+      net = me.network.not_nil!
+      net.expecting_reply?.should eq(true)
+      net.destination.address.should eq(26001)
+      net.destination_mac.should eq("72")
+      net.hop_count.should eq(255)
 
       app = me.application
       case app
@@ -91,12 +94,13 @@ module BACnet
 
     it "should parse a complex ack" do
       bytes = "810a0029010865910172300a0c0c02015062191c3e75110041546d656761313638204465766963653f".hexbytes
-      me = IO::Memory.new(bytes).read_bytes(Message)
+      me = IO::Memory.new(bytes).read_bytes(IP4Message)
       me.data_link.request_type.should eq(RequestTypeIP4::OriginalUnicastNPDU)
 
-      me.network.expecting_reply?.should eq(false)
-      me.network.source.address.should eq(26001)
-      me.network.source_mac.should eq("72")
+      net = me.network.not_nil!
+      net.expecting_reply?.should eq(false)
+      net.source.address.should eq(26001)
+      net.source_mac.should eq("72")
 
       app = me.application
       case app
