@@ -57,17 +57,17 @@ module BACnet
       end
     end
 
-    def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : IO
+    def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : Int64
       format = IO::ByteFormat::BigEndian
-      io.write_bytes(@data_link, format)
+      wrote = io.write_bytes(@data_link, format)
       if network = @network
-        io.write_bytes(network, format)
+        wrote += io.write_bytes(network, format)
         if app = @application
-          io.write_bytes(app, format)
-          objects.each { |object| io.write_bytes(object, format) }
+          wrote += io.write_bytes(app, format)
+          objects.each { |object| wrote += io.write_bytes(object, format) }
         end
       end
-      io
+      wrote
     end
 
     def to_slice
