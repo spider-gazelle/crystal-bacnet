@@ -1,6 +1,6 @@
 # BACnet Support for Crystal Lang
 
-[![Build Status](https://travis-ci.com/spider-gazelle/crystal-bacnet.svg?branch=master)](https://travis-ci.com/github/spider-gazelle/crystal-bacnet)
+[![CI](https://github.com/spider-gazelle/crystal-bacnet/actions/workflows/ci.yml/badge.svg)](https://github.com/spider-gazelle/crystal-bacnet/actions/workflows/ci.yml)
 
 it supports
 
