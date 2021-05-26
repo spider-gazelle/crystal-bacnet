@@ -59,6 +59,7 @@ module BACnet
 
     def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : Int64
       # this will always be big endian, just need to match the interface
+      # ameba:disable Lint/ShadowedArgument
       format = IO::ByteFormat::BigEndian
       wrote = io.write_bytes(@data_link, format)
       if network = @network

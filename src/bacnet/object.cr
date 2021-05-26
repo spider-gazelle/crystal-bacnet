@@ -84,6 +84,7 @@ module BACnet
       5_u8 => "ISO8859-1",
     }
 
+    # ameba:disable Metrics/CyclomaticComplexity
     def value
       raise Error.new("context specific flag set, not primitive data") if context_specific
 
@@ -223,6 +224,7 @@ module BACnet
       io.read_bytes(BACnet::PropertyIdentifier, IO::ByteFormat::BigEndian)
     end
 
+    # ameba:disable Metrics/CyclomaticComplexity
     def value=(var)
       self.context_specific = false
 

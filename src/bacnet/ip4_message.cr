@@ -22,6 +22,7 @@ module BACnet
       data.read_bytes(DataLinkIndicator)
     end
 
+    # ameba:disable Metrics/CyclomaticComplexity
     def self.from_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : IP4Message
       # Get message length
       indicator = hint(io)
@@ -75,6 +76,7 @@ module BACnet
 
     def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : Int64
       # this will always be big endian, just need to match the interface
+      # ameba:disable Lint/ShadowedArgument
       format = IO::ByteFormat::BigEndian
       wrote = io.write_bytes(@data_link, format)
       if net = @network
