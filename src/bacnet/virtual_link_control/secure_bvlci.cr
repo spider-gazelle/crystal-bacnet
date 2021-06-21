@@ -1,4 +1,4 @@
-require "../bacnet"
+require "../../bacnet"
 
 module BACnet
   enum RequestTypeSecure

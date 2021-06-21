@@ -1,4 +1,4 @@
-require "../bacnet"
+require "../../bacnet"
 
 module BACnet
   # Used to tokenise the IP data stream and differentiate between packet types

@@ -1,4 +1,4 @@
-require "../bacnet"
+require "../../bacnet"
 
 module BACnet
   # Header
@@ -19,6 +19,7 @@ module BACnet
     SecureBVLL = 0x0c
   end
 
+  # BACnet Virtual Link Control Interface
   class IP4BVLCI < BinData
     endian :big
 

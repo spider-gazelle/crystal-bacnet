@@ -89,11 +89,22 @@ module BACnet
       io = IO::Memory.new(bytes)
       obj = io.read_bytes(Object)
       id = obj.value.as(ObjectIdentifier)
-      id.object_type.should eq(8)
+      id.object_type.should eq(ObjectIdentifier::ObjectType::Device)
       id.instance_number.should eq(4194303)
 
       obj.value = id
       obj.to_slice.should eq(bytes)
+    end
+
+    it "should decode an array index" do
+      bytes = "291e".hexbytes
+      io = IO::Memory.new(bytes)
+      obj = io.read_bytes(Object)
+
+      # Context specific object so we don't know what the value is
+      expect_raises(::BACnet::Error) do
+        obj.value
+      end
     end
   end
 end

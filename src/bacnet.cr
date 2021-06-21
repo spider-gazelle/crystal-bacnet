@@ -117,6 +117,92 @@ module BACnet
   # ASN.1 message tags (NPDU description page 5)
   # enum ApplicationTags
   # end
+
+  def self.who_is
+    data_link = IP4BVLCI.new
+    data_link.request_type = RequestTypeIP4::OriginalBroadcastNPDU
+
+    # broadcast
+    network = NPDU.new
+    network.destination_specifier = true
+    network.destination.address = 0xFFFF_u16
+    network.hop_count = 255_u8
+
+    request = UnconfirmedRequest.new
+    request.service = UnconfirmedService::WhoIs
+
+    IP4Message.new(data_link, network, request)
+  end
+
+  @@invoke_id = 0_u8
+
+  def self.next_invoke_id
+    next_id = @@invoke_id &+ 1
+    @@invoke_id = next_id
+  end
+
+  # Index 0 == max index
+  # Index 1 == device info
+  # Index 2..max == object info
+  def self.read_property(
+    object_type : ObjectIdentifier::ObjectType,
+    instance : UInt32,
+    property : PropertyIdentifier::PropertyType,
+    index : Int
+  )
+    data_link = IP4BVLCI.new
+    data_link.request_type = RequestTypeIP4::OriginalUnicastNPDU
+
+    network = NPDU.new
+    network.expecting_reply = true
+
+    request = ConfirmedRequest.new
+    request.max_size_indicator = 5_u8
+    request.invoke_id = next_invoke_id
+    request.service = ConfirmedService::ReadProperty
+
+    object_id = ObjectIdentifier.new
+    object_id.object_type = object_type
+    object_id.instance_number = instance
+    object = Object.new.set_value(object_id)
+    object.context_specific = true
+    object.short_tag = 0_u8
+
+    property_id = PropertyIdentifier.new
+    property_id.property_type = property
+    property_obj = Object.new.set_value(property_id)
+    property_obj.context_specific = true
+    property_obj.short_tag = 1_u8
+
+    index_obj = Object.new.set_value(index.to_u32)
+    index_obj.context_specific = true
+    index_obj.short_tag = 2_u8
+
+    IP4Message.new(data_link, network, request, [object, property_obj, index_obj])
+  end
+
+  def self.parse_i_am(objects)
+    obj_id = objects[0].value.as(BACnet::ObjectIdentifier)
+    {
+      object_type: obj_id.object_type,
+      object_instance: obj_id.instance_number,
+      max_adpu_length: objects[1].to_u64,
+      segmentation_supported: SegmentationSupport.from_value(objects[2].to_u64),
+      vendor_id: objects[3].to_u64,
+    }
+  end
+
+  def self.read_complex_ack(objects)
+    obj_id = objects[0].to_object_id
+    {
+      object_type: obj_id.object_type,
+      object_instance: obj_id.instance_number,
+      property: objects[1].to_property_id.property_type,
+      index: objects[2].to_u64,
+      data: objects[3].objects,
+    }
+  end
 end
 
 require "./bacnet/*"
+require "./bacnet/**"

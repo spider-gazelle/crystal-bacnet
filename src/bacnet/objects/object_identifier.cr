@@ -5,71 +5,79 @@ module BACnet
     endian :big
 
     bit_field do
-      bits 10, :object_type
+      enum_bits 10, object_type : ObjectType = ObjectType::Device
       bits 22, :instance_number
     end
 
-    OBJECT_TYPES = {
-      analog_input:           0,
-      analog_output:          1,
-      analog_value:           2,
-      binary_input:           3,
-      binary_output:          4,
-      binary_value:           5,
-      calendar:               6,
-      command:                7,
-      device:                 8,
-      event_enrollment:       9,
-      file:                   10,
-      group:                  11,
-      loop:                   12,
-      multi_state_input:      13,
-      multi_state_output:     14,
-      notification_class:     15,
-      program:                16,
-      schedule:               17,
-      averaging:              18,
-      multi_state_value:      19,
-      trend_log:              20,
-      life_safety_point:      21,
-      life_safety_zone:       22,
-      accumulator:            23,
-      pulse_converter:        24,
-      event_log:              25,
-      global_group:           26,
-      trend_log_multiple:     27,
-      load_control:           28,
-      structured_view:        29,
-      access_door:            30,
-      timer:                  31,
-      access_credential:      32,
-      access_point:           33,
-      access_rights:          34,
-      access_user:            35,
-      access_zone:            36,
-      credential_data_input:  37,
-      network_security:       38,
-      bitstring_value:        39,
-      characterstring_value:  40,
-      date_pattern_value:     41,
-      date_value:             42,
-      datetime_pattern_value: 43,
-      datetime_value:         44,
-      integer_value:          45,
-      large_analog_value:     46,
-      octetstring_value:      47,
-      positive_integer_value: 48,
-      time_pattern_value:     49,
-      time_value:             50,
-      notification_forwarder: 51,
-      alert_enrollment:       52,
-      channel:                53,
-      lighting_output:        54,
-      binary_lighting_output: 55,
-      network_port:           56,
-      elevator_group:         57,
-      escalator:              58,
-      lift:                   59,
-    }
+    def inspect(io : IO) : Nil
+      super(io)
+
+      io << "\b #type="
+      object_type.to_s(io)
+      io << ">"
+    end
+
+    enum ObjectType
+      AnalogInput = 0
+      AnalogOutput = 1
+      AnalogValue = 2
+      BinaryInput = 3
+      BinaryOutput = 4
+      BinaryValue = 5
+      Calendar = 6
+      Command = 7
+      Device = 8
+      EventEnrollment = 9
+      File = 10
+      Group = 11
+      Loop = 12
+      MultiStateInput = 13
+      MultiStateOutput = 14
+      NotificationClass = 15
+      Program = 16
+      Schedule = 17
+      Averaging = 18
+      MultiStateValue = 19
+      TrendLog = 20
+      LifeSafetyPoint = 21
+      LifeSafetyZone = 22
+      Accumulator = 23
+      PulseConverter = 24
+      EventLog = 25
+      GlobalGroup = 26
+      TrendLogMultiple = 27
+      LoadControl = 28
+      StructuredView = 29
+      AccessDoor = 30
+      Timer = 31
+      AccessCredential = 32
+      AccessPoint = 33
+      AccessRights = 34
+      AccessUser = 35
+      AccessZone = 36
+      CredentialDataInput = 37
+      NetworkSecurity = 38
+      BitstringValue = 39
+      CharacterStringValue = 40
+      DatePatternValue = 41
+      DateValue = 42
+      DatetimePatternValue = 43
+      DatetimeValue = 44
+      IntegerValue = 45
+      LargeAnalogValue = 46
+      OctetstringValue = 47
+      PositiveIntegerValue = 48
+      TimePatternValue = 49
+      TimeValue = 50
+      NotificationForwarder = 51
+      AlertEnrollment = 52
+      Channel = 53
+      LightingOutput = 54
+      BinaryLightingOutput = 55
+      NetworkPort = 56
+      ElevatorGroup = 57
+      Escalator = 58
+      Lift = 59
+    end
   end
 end

@@ -1,11 +1,11 @@
 require "./helper"
 
 module BACnet
-  describe IP4Message do
+  describe Message::IPv4 do
     it "should parse a who is request" do
       bytes = "810b000c0120ffff00ff1008".hexbytes
 
-      me = IO::Memory.new(bytes).read_bytes(IP4Message)
+      me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
       net = me.network.not_nil!
       net.destination.address.should eq(65535)
       net.destination.mac_address_length.should eq(0)
@@ -26,7 +26,7 @@ module BACnet
     it "should parse a i am request" do
       bytes = "810b00190120ffff00ff1000c4023fffff2201e09103220104".hexbytes
 
-      me = IO::Memory.new(bytes).read_bytes(IP4Message)
+      me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
       me.data_link.request_type.should eq(RequestTypeIP4::OriginalBroadcastNPDU)
 
       net = me.network.not_nil!
@@ -45,7 +45,7 @@ module BACnet
 
       me.objects.size.should eq(4)
       object_id = me.objects[0].value.as(ObjectIdentifier)
-      object_id.object_type.should eq(8)
+      object_id.object_type.should eq(ObjectIdentifier::ObjectType::Device)
       object_id.instance_number.should eq(4194303)
 
       max_len = me.objects[1].value.as(UInt64)
@@ -62,7 +62,7 @@ module BACnet
 
     it "should parse a confirmed request" do
       bytes = "810a0016012465910172ff00030a0c0c02015062191c".hexbytes
-      me = IO::Memory.new(bytes).read_bytes(IP4Message)
+      me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
       me.data_link.request_type.should eq(RequestTypeIP4::OriginalUnicastNPDU)
 
       net = me.network.not_nil!
@@ -85,16 +85,16 @@ module BACnet
       object_id = me.objects[0].to_object_id
       prop_id = me.objects[1].to_property_id
 
-      object_id.object_type.should eq(8)
+      object_id.object_type.should eq(ObjectIdentifier::ObjectType::Device)
       object_id.instance_number.should eq(86114)
-      prop_id.property_type.should eq(28)
+      prop_id.property_type.should eq(PropertyIdentifier::PropertyType::Description)
 
       me.to_slice.should eq(bytes)
     end
 
     it "should parse a complex ack" do
       bytes = "810a0029010865910172300a0c0c02015062191c3e75110041546d656761313638204465766963653f".hexbytes
-      me = IO::Memory.new(bytes).read_bytes(IP4Message)
+      me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
       me.data_link.request_type.should eq(RequestTypeIP4::OriginalUnicastNPDU)
 
       net = me.network.not_nil!
@@ -111,21 +111,34 @@ module BACnet
         raise "unexpected message type"
       end
 
-      me.objects.size.should eq(5)
+      me.objects.size.should eq(3)
       object_id = me.objects[0].to_object_id
       prop_id = me.objects[1].to_property_id
 
-      object_id.object_type.should eq(8)
+      object_id.object_type.should eq(ObjectIdentifier::ObjectType::Device)
       object_id.instance_number.should eq(86114)
-      prop_id.property_type.should eq(28)
+      prop_id.property_type.should eq(PropertyIdentifier::PropertyType::Description)
 
-      me.objects[2].opening?.should eq(true)
-      me.objects[4].closing?.should eq(true)
-
-      desc = me.objects[3].to_encoded_string
+      desc = me.objects[2].objects.first.to_encoded_string
       desc.should eq("ATmega168 Device")
 
       me.to_slice.should eq(bytes)
+    end
+
+    it "should parse a complex i-am message" do
+      bvcl = "810b0017"
+      npdu = "0120ffff00ff"
+      apdu = "1000"
+      objects = "c40200006f21329103212a"
+      bytes = bvcl + npdu + apdu + objects
+      message = IO::Memory.new(bytes.hexbytes).read_bytes(Message::IPv4)
+
+      io = IO::Memory.new(objects.hexbytes)
+      objects = [] of Object
+      loop do
+        break unless io.pos < io.size
+        objects << io.read_bytes(Object)
+      end
     end
   end
 end
