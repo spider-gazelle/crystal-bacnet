@@ -184,22 +184,22 @@ module BACnet
   def self.parse_i_am(objects)
     obj_id = objects[0].value.as(BACnet::ObjectIdentifier)
     {
-      object_type: obj_id.object_type,
-      object_instance: obj_id.instance_number,
-      max_adpu_length: objects[1].to_u64,
+      object_type:            obj_id.object_type,
+      object_instance:        obj_id.instance_number,
+      max_adpu_length:        objects[1].to_u64,
       segmentation_supported: SegmentationSupport.from_value(objects[2].to_u64),
-      vendor_id: objects[3].to_u64,
+      vendor_id:              objects[3].to_u64,
     }
   end
 
   def self.read_complex_ack(objects)
     obj_id = objects[0].to_object_id
     {
-      object_type: obj_id.object_type,
+      object_type:     obj_id.object_type,
       object_instance: obj_id.instance_number,
-      property: objects[1].to_property_id.property_type,
-      index: objects[2].to_u64,
-      data: objects[3].objects,
+      property:        objects[1].to_property_id.property_type,
+      index:           objects[2].to_u64,
+      data:            objects[3].objects,
     }
   end
 end
