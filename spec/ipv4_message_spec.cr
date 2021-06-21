@@ -131,14 +131,7 @@ module BACnet
       apdu = "1000"
       objects = "c40200006f21329103212a"
       bytes = bvcl + npdu + apdu + objects
-      message = IO::Memory.new(bytes.hexbytes).read_bytes(Message::IPv4)
-
-      io = IO::Memory.new(objects.hexbytes)
-      objects = [] of Object
-      loop do
-        break unless io.pos < io.size
-        objects << io.read_bytes(Object)
-      end
+      IO::Memory.new(bytes.hexbytes).read_bytes(Message::IPv4)
     end
   end
 end

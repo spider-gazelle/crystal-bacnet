@@ -25,7 +25,6 @@ class BACnet::Message::IPv4
     data.read_bytes(DataLinkIndicator)
   end
 
-  # ameba:disable Metrics/CyclomaticComplexity
   def self.from_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : IPv4
     # Get message length
     indicator = hint(io)
