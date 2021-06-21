@@ -52,15 +52,13 @@ class BACnet::Message
     # this will always be big endian, just need to match the interface
     # ameba:disable Lint/ShadowedArgument
     format = IO::ByteFormat::BigEndian
-    wrote = 0_u64
     if network = @network
-      wrote += io.write_bytes(network, format)
+      io.write_bytes(network, format)
       if app = @application
-        wrote += io.write_bytes(app, format)
-        objects.each { |object| wrote += io.write_bytes(object, format) }
+        io.write_bytes(app, format)
+        objects.each { |object| io.write_bytes(object, format) }
       end
     end
-    wrote
   end
 
   def to_slice

@@ -42,15 +42,14 @@ class BACnet::Objects
     obj.context_specific = context_specific
     obj.short_tag = short_tag
     obj.uint3_length = 6 # opening tag indicator
-    wrote = io.write_bytes(obj, format)
+    io.write_bytes(obj, format)
 
     # write the objects
-    objects.each { |object| wrote += io.write_bytes(object, format) }
+    objects.each { |object| io.write_bytes(object, format) }
 
     # write the close nested set
     obj.uint3_length = 7 # closing tag indicator
-    wrote += io.write_bytes(obj, format)
-    wrote
+    io.write_bytes(obj, format)
   end
 
   def to_slice

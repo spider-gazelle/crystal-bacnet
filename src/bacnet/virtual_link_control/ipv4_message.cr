@@ -47,9 +47,8 @@ class BACnet::Message::IPv4
     # this will always be big endian, just need to match the interface
     # ameba:disable Lint/ShadowedArgument
     format = IO::ByteFormat::BigEndian
-    wrote = io.write_bytes(@data_link, format)
-    wrote += io.write_bytes(@message, format)
-    wrote
+    io.write_bytes(@data_link, format)
+    io.write_bytes(@message, format)
   end
 
   def to_slice
