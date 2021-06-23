@@ -1,40 +1,25 @@
 require "../../bacnet"
+require "./secure_message"
 
 module BACnet
-  enum RequestTypeSecure
-    BVCLResult                =    0
-    EncapsulatedNPDU          =    1
-    AddressResolution         =    2
-    AddressResolutionACK      =    3
-    Advertisement             =    4
-    AdvertisementSolicitation =    5
-    ConnectRequest            =    6
-    ConnectAccept             =    7
-    DisconnectRequest         =    8
-    DisconnectACK             =    9
-    HeartbeatRequest          = 0x0a
-    HeartbeatACK              = 0x0b
-    ProprietaryMessage        = 0x0c
-  end
-
-  class SecureBVLCI < BinData
+  class Message::Secure::BVLCI < BinData
     endian :big
-
-    enum HeaderType
-      # SecurePath presence means this packet has only been on secure mediums
-      SecurePath  =  1
-      Proprietary = 31
-    end
 
     class Header < BinData
       endian :big
+
+      enum Type
+        # SecurePath presence means this packet has only been on secure mediums
+        SecurePath  =  1
+        Proprietary = 31
+      end
 
       bit_field do
         bool more_headers
         bool must_understand
         bool header_data
 
-        enum_bits 5, header_type : HeaderType = HeaderType::SecurePath
+        enum_bits 5, header_type : Type = Type::SecurePath
       end
 
       uint16 :data_length, value: ->{ header_type.proprietary? ? (proprietary.data.size + 3) : data.size }, onlyif: ->{ header_data }
@@ -49,7 +34,7 @@ module BACnet
 
     # NOTE:: a UUID constant needs to be generated
 
-    enum_field UInt8, request_type : RequestTypeSecure = RequestTypeSecure::BVCLResult
+    enum_field UInt8, request_type : Request = Request::BVCLResult
     bit_field do
       # true == network layer message, message type field is present
       bits 4, :reserved

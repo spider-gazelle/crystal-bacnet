@@ -10,7 +10,12 @@ module BACnet
     uint8 :invoke_id
     enum_field UInt8, service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
 
-    # NOTE:: error_class_data, error_code_data are passed as BACnet objects
+    # error_class_data, error_code_data are passed as BACnet objects
+    def error_details(objects)
+      klass = ErrorClass.from_value message.objects[0].to_u64
+      code = ErrorCode.from_value message.objects[1].to_u64
+      {klass, code}
+    end
   end
 
   enum ErrorClass

@@ -59,9 +59,9 @@ class BACnet::Objects
   end
 
   # this groups all the nested objects for simplified processing
-  def self.parse_object_list(objects : Array(Object)) : Array(Object | Objects)
+  def self.parse_object_list(objects : Array(Object | Objects)) : Array(Object | Objects)
     objs = [] of Object | Objects
-    subset = [] of Object
+    subset = [] of Object | Objects
     parsing_subset = false
     subset_id = 0_u8
 

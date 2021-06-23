@@ -27,7 +27,7 @@ module BACnet
       bytes = "810b00190120ffff00ff1000c4023fffff2201e09103220104".hexbytes
 
       me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
-      me.data_link.request_type.should eq(RequestTypeIP4::OriginalBroadcastNPDU)
+      me.data_link.request_type.should eq(Message::IPv4::Request::OriginalBroadcastNPDU)
 
       net = me.network.not_nil!
       net.destination.address.should eq(65535)
@@ -63,7 +63,7 @@ module BACnet
     it "should parse a confirmed request" do
       bytes = "810a0016012465910172ff00030a0c0c02015062191c".hexbytes
       me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
-      me.data_link.request_type.should eq(RequestTypeIP4::OriginalUnicastNPDU)
+      me.data_link.request_type.should eq(Message::IPv4::Request::OriginalUnicastNPDU)
 
       net = me.network.not_nil!
       net.expecting_reply?.should eq(true)
@@ -95,7 +95,7 @@ module BACnet
     it "should parse a complex ack" do
       bytes = "810a0029010865910172300a0c0c02015062191c3e75110041546d656761313638204465766963653f".hexbytes
       me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
-      me.data_link.request_type.should eq(RequestTypeIP4::OriginalUnicastNPDU)
+      me.data_link.request_type.should eq(Message::IPv4::Request::OriginalUnicastNPDU)
 
       net = me.network.not_nil!
       net.expecting_reply?.should eq(false)

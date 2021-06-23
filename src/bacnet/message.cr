@@ -1,10 +1,12 @@
 require "../bacnet"
 
 class BACnet::Message
-  def initialize(@network = nil, @application = nil, @objects = [] of Object | Objects)
+  def initialize(@network = nil, @application = nil, objects : Array(Object | Objects) = [] of Object | Objects)
+    @objects = [] of Object | Objects
+    @objects.concat objects
   end
 
-  alias AppLayer = Nil | ConfirmedRequest | UnconfirmedRequest | SimpleAck | ComplexAck | SegmentAck | ErrorResponse | RejectResponse | AbortResponse
+  alias AppLayer = ConfirmedRequest | UnconfirmedRequest | SimpleAck | ComplexAck | SegmentAck | ErrorResponse | RejectResponse | AbortResponse
 
   property network : NPDU?
   property application : AppLayer?
@@ -39,7 +41,7 @@ class BACnet::Message
                       io.read_bytes(AbortResponse)
                     end
 
-      objects = [] of Object
+      objects = [] of Object | Objects
       loop do
         break unless io.pos < io.size
         objects << io.read_bytes(Object)
