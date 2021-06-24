@@ -54,7 +54,7 @@ class BACnet::Client
   def initialize(
     @retries : Int32 = 3,
     @timeout : ::Time::Span = 5.seconds,
-    &@transmit : (Message::IPv4, Socket::IPAddress) -> Nil
+    &@transmit : (Bytes, Socket::IPAddress) -> Nil
   )
     @invoke_id = rand(0xFF).to_u8
     @in_flight = {} of UInt8 => Tracker
@@ -68,6 +68,17 @@ class BACnet::Client
   @parsing : Set(String) = Set(String).new
 
   property devices : Hash(Socket::IPAddress, DeviceInfo)
+
+  protected def perform_transmit(message : Message::IPv4, address : Socket::IPAddress)
+    bytes = message.to_slice
+
+    # add the size header
+    size = bytes.size.to_u16
+    io = IO::Memory.new(bytes[2,2])
+    io.write_bytes(size, IO::ByteFormat::BigEndian)
+
+    @transmit.call(bytes, address)
+  end
 
   protected def send_and_retry(tracker : Tracker)
     promise = Promise.new(Message::IPv4?, @timeout)
@@ -91,7 +102,7 @@ class BACnet::Client
     end
 
     @mutex.synchronize { @in_flight[tracker.request_id] = tracker }
-    @transmit.call(tracker.request, tracker.address)
+    perform_transmit(tracker.request, tracker.address)
     tracker.promise
   end
 
@@ -116,7 +127,7 @@ class BACnet::Client
     request.service = UnconfirmedService::WhoIs
 
     message = Message::IPv4.new(data_link, network, request)
-    @transmit.call(message, Socket::IPAddress.new("255.255.255.255", 0xBAC0))
+    perform_transmit(message, Socket::IPAddress.new("255.255.255.255", 0xBAC0))
     message
   end
 
@@ -129,7 +140,7 @@ class BACnet::Client
     request.service = UnconfirmedService::WhoIs
 
     message = Message::IPv4.new(data_link, network, request)
-    @transmit.call(message, address)
+    perform_transmit(message, address)
     message
   end
 
