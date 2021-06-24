@@ -74,7 +74,7 @@ class BACnet::Client
 
     # add the size header
     size = bytes.size.to_u16
-    io = IO::Memory.new(bytes[2,2])
+    io = IO::Memory.new(bytes[2, 2])
     io.write_bytes(size, IO::ByteFormat::BigEndian)
 
     @transmit.call(bytes, address)
