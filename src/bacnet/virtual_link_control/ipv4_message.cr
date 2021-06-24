@@ -81,7 +81,14 @@ class BACnet::Message::IPv4
   def to_slice
     io = IO::Memory.new
     io.write_bytes self
-    io.to_slice
+    bytes = io.to_slice
+
+    # add the size header
+    size = bytes.size.to_u16
+    io = IO::Memory.new(bytes[2, 2])
+    io.write_bytes(size, IO::ByteFormat::BigEndian)
+
+    bytes
   end
 end
 
