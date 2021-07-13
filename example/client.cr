@@ -113,9 +113,9 @@ class BACnet::Client
     end
   end
 
-  def who_is(destination : Int = 0xFFFF_u16)
+  def who_is(destination : Int = 0xFFFF_u16, request_type : Message::IPv4::Request = Message::IPv4::Request::OriginalBroadcastNPDU)
     data_link = Message::IPv4::BVLCI.new
-    data_link.request_type = Message::IPv4::Request::OriginalBroadcastNPDU
+    data_link.request_type = request_type
 
     # broadcast
     network = NPDU.new
@@ -131,9 +131,9 @@ class BACnet::Client
     message
   end
 
-  def who_is(address : Socket::IPAddress)
+  def who_is(address : Socket::IPAddress, request_type : Message::IPv4::Request = Message::IPv4::Request::OriginalBroadcastNPDU)
     data_link = Message::IPv4::BVLCI.new
-    data_link.request_type = Message::IPv4::Request::OriginalUnicastNPDU
+    data_link.request_type = request_type
 
     network = NPDU.new
     request = UnconfirmedRequest.new
@@ -239,6 +239,42 @@ class BACnet::Client
     Log.error { "error applying object values for #{address}: #{object.object_type}[#{object.instance}]\n#{error.message}" }
   end
 
+  def inspect_device(address, object_instance)
+    object_instance = object_instance.to_u32
+
+    # ignore duplicate requests
+    device_id = "#{address}-#{object_instance}"
+    if @parsing.includes?(device_id)
+      Log.debug { "ignoring inspect request as already parsing: #{device_id}" }
+      return
+    end
+    @parsing << device_id
+
+    device = @devices[address]
+    device.instance = object_instance
+    promise = read_property(address, BACnet::ObjectIdentifier::ObjectType::Device, object_instance, BACnet::PropertyIdentifier::PropertyType::ObjectList, 0)
+    promise.then do |response|
+      raise "property missing" unless response
+      list_details = Client.read_complex_ack(response.objects)
+      max_properties = list_details[:data][0].to_u64
+
+      (2..max_properties).each do |index|
+        query_device(
+          address,
+          list_details[:object_type],
+          list_details[:object_instance],
+          index,
+          max_properties
+        )
+      end
+
+      # obtain object information
+      device = @devices[address]
+      device.objects_listed = true
+      device.objects.each { |object| parse_object_info(address, object) }
+    end
+  end
+
   # Index 0 == max index
   # Index 1 == device info
   # Index 2..max == object info
@@ -279,37 +315,7 @@ class BACnet::Client
       when .i_am?
         details = Client.parse_i_am(message.objects)
 
-        # ignore duplicate requests
-        device_id = "#{address}-#{details[:object_instance]}"
-        if @parsing.includes?(device_id)
-          Log.debug { "ignoring duplicate iam request\n#{message.inspect}" }
-          return
-        end
-        @parsing << device_id
-
-        device = @devices[address]
-        device.instance = details[:object_instance]
-        promise = read_property(address, details[:object_type], details[:object_instance], BACnet::PropertyIdentifier::PropertyType::ObjectList, 0)
-        promise.then do |response|
-          raise "property missing" unless response
-          list_details = Client.read_complex_ack(response.objects)
-          max_properties = list_details[:data][0].to_u64
-
-          (2..max_properties).each do |index|
-            query_device(
-              address,
-              list_details[:object_type],
-              list_details[:object_instance],
-              index,
-              max_properties
-            )
-          end
-
-          # obtain object information
-          device = @devices[address]
-          device.objects_listed = true
-          device.objects.each { |object| parse_object_info(address, object) }
-        end
+        inspect_device(address, details[:object_instance])
       else
         Log.debug { "ignoring unconfirmed request\n#{message.inspect}" }
       end
@@ -320,6 +326,7 @@ class BACnet::Client
           code = ErrorCode.from_value message.objects[1].to_u64
 
           error_message = "request failed with #{app.class} - #{klass}: #{code}"
+          Log.trace { error_message  }
 
           error = case code
                   when ErrorCode::UnknownProperty
