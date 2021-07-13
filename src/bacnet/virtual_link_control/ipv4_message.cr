@@ -71,24 +71,17 @@ class BACnet::Message::IPv4
   end
 
   def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian)
-    # this will always be big endian, just need to match the interface
-    # ameba:disable Lint/ShadowedArgument
-    format = IO::ByteFormat::BigEndian
-    io.write_bytes(@data_link, format)
-    io.write_bytes(@message, format)
+    io.write to_slice
   end
 
   def to_slice
     io = IO::Memory.new
-    io.write_bytes self
-    bytes = io.to_slice
-
-    # add the size header
-    size = bytes.size.to_u16
-    io = IO::Memory.new(bytes[2, 2])
-    io.write_bytes(size, IO::ByteFormat::BigEndian)
-
-    bytes
+    format = IO::ByteFormat::BigEndian
+    io.write_bytes(@data_link, format)
+    io.write_bytes(@message, format)
+    io.pos = 2
+    io.write_bytes(io.size.to_u16, IO::ByteFormat::BigEndian)
+    io.to_slice
   end
 end
 
