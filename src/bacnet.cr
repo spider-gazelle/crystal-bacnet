@@ -378,4 +378,8 @@ module BACnet
 end
 
 require "./bacnet/*"
-require "./bacnet/**"
+require "./bacnet/objects/*"
+require "./bacnet/services/*"
+require "./bacnet/virtual_link_control/*"
+require "./bacnet/client/*"
+require "./bacnet/client/**"

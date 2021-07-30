@@ -7,8 +7,8 @@ module BACnet
 
       me = IO::Memory.new(bytes).read_bytes(Message::IPv4)
       net = me.network.not_nil!
-      net.destination.address.should eq(65535)
-      net.destination.mac_address_length.should eq(0)
+      net.destination.network.should eq(65535)
+      net.destination.address_length.should eq(0)
       net.destination_broadcast?.should be_true
       net.hop_count.should eq(255)
 
@@ -30,8 +30,8 @@ module BACnet
       me.data_link.request_type.should eq(Message::IPv4::Request::OriginalBroadcastNPDU)
 
       net = me.network.not_nil!
-      net.destination.address.should eq(65535)
-      net.destination.mac_address_length.should eq(0)
+      net.destination.network.should eq(65535)
+      net.destination.address_length.should eq(0)
       net.destination_broadcast?.should be_true
       net.hop_count.should eq(255)
 
@@ -67,8 +67,8 @@ module BACnet
 
       net = me.network.not_nil!
       net.expecting_reply?.should eq(true)
-      net.destination.address.should eq(26001)
-      net.destination_mac.should eq("72")
+      net.destination.network.should eq(26001)
+      net.destination_address.should eq("72")
       net.hop_count.should eq(255)
 
       app = me.application
@@ -99,8 +99,8 @@ module BACnet
 
       net = me.network.not_nil!
       net.expecting_reply?.should eq(false)
-      net.source.address.should eq(26001)
-      net.source_mac.should eq("72")
+      net.source.network.should eq(26001)
+      net.source_address.should eq("72")
 
       app = me.application
       case app

@@ -170,6 +170,16 @@ class BACnet::Object < BinData
     end
   end
 
+  {% begin %}
+    {% for name in %w(to_u32 to_u16 to_u8) %}
+      def {{name.id}}; to_u64.{{name.id}}; end
+    {% end %}
+
+    {% for name in %w(to_i to_i32 to_i16 to_i8) %}
+      def {{name.id}}; to_i64.{{name.id}}; end
+    {% end %}
+  {% end %}
+
   def to_bool
     # Boolean
     self.uint3_length == 1_u8
@@ -223,8 +233,12 @@ class BACnet::Object < BinData
     io.read_bytes(BACnet::PropertyIdentifier, IO::ByteFormat::BigEndian)
   end
 
-  def set_value(value)
+  def set_value(value, context_specific : Bool = false, tag : Int? = nil)
     self.value = value
+    self.context_specific = context_specific
+    if tag
+      self.tag = tag
+    end
     self
   end
 

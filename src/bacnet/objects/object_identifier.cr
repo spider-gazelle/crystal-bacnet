@@ -9,6 +9,13 @@ module BACnet
       bits 22, :instance_number
     end
 
+    def initialize
+    end
+
+    def initialize(@object_type : ObjectType, instance_number : Int)
+      @instance_number = instance_number.to_u32
+    end
+
     def inspect(io : IO) : Nil
       super(io)
 

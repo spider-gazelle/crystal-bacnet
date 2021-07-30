@@ -79,6 +79,8 @@ class BACnet::Message::IPv4
     format = IO::ByteFormat::BigEndian
     io.write_bytes(@data_link, format)
     io.write_bytes(@message, format)
+
+    # write the message length
     io.pos = 2
     io.write_bytes(io.size.to_u16, IO::ByteFormat::BigEndian)
     io.to_slice

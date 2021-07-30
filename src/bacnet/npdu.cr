@@ -19,15 +19,15 @@ class BACnet::NPDU < BinData
   end
 
   group :destination, onlyif: ->{ destination_specifier } do
-    uint16 :address
-    uint8 :mac_address_length, value: ->{ mac_address.size }
-    bytes :mac_address, length: ->{ mac_address_length }
+    uint16 :network
+    uint8 :address_length, value: ->{ address.size }
+    bytes :address, length: ->{ address_length }
   end
 
   group :source, onlyif: ->{ source_specifier } do
-    uint16 :address
-    uint8 :mac_address_length, value: ->{ mac_address.size }
-    bytes :mac_address, length: ->{ mac_address_length }
+    uint16 :network
+    uint8 :address_length, value: ->{ address.size }
+    bytes :address, length: ->{ address_length }
   end
 
   uint8 :hop_count, onlyif: ->{ destination_specifier }
@@ -67,19 +67,29 @@ class BACnet::NPDU < BinData
   # 0x05 == Router Available to (array of 2 byte dnets)
   # 0x08 == Establish Connection (2 byte dnet, 1 byte termination time value)
 
-  def destination_mac
+  def destination_address
     return nil unless destination_specifier
     read_mac destination
   end
 
-  def destination_mac=(address : String)
-    assign_mac(destination, address)
-    self.destination_specifier = true
+  def destination_address=(address : String | Bytes?)
+    case address
+    in String
+      assign_mac(destination, address)
+      self.destination_specifier = true
+    in Bytes
+      self.destination.address = address
+      self.destination_specifier = true
+    in Nil
+      assign_mac(destination, "")
+      self.destination_specifier = false
+    end
+
     address
   end
 
   def destination_broadcast?
-    destination_specifier && destination.mac_address_length == 0_u8
+    destination_specifier && destination.address_length == 0_u8
   end
 
   enum BroadcastType
@@ -89,29 +99,39 @@ class BACnet::NPDU < BinData
 
   def broadcast!(send_to : BroadcastType = BroadcastType::Global)
     if send_to.global?
-      destination.mac_address = Bytes[0xff, 0xff]
+      destination.address = Bytes[0xff, 0xff]
     else
-      destination.mac_address = Bytes.new(0)
+      destination.address = Bytes.new(0)
     end
   end
 
-  def source_mac
+  def source_address
     return nil unless source_specifier
     read_mac source
   end
 
-  def source_mac=(address : String)
-    assign_mac(source, address)
-    self.source_specifier = true
+  def source_address=(address : String | Bytes?)
+    case address
+    in String
+      assign_mac(source, address)
+      self.source_specifier = true
+    in Bytes
+      self.source.address = address
+      self.source_specifier = true
+    in Nil
+      assign_mac(source, "")
+      self.source_specifier = false
+    end
+
     address
   end
 
   def read_mac(group)
-    group.mac_address.hexstring
+    group.address.hexstring
   end
 
   def assign_mac(group, address : String)
-    group.mac_address = address.hexbytes
+    group.address = address.hexbytes
   end
 
   def expecting_reply?

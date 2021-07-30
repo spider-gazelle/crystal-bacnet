@@ -6,6 +6,9 @@ module BACnet
 
     enum_field UInt8, property_type : PropertyType = PropertyType::All
 
+    def initialize(@property_type : PropertyType = PropertyType::All)
+    end
+
     enum PropertyType
       AckedTransitions                 =   0
       AckRequired                      =   1
