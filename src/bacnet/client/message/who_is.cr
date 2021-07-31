@@ -10,7 +10,6 @@ module BACnet::Client::Message::WhoIs
             low_limit : Int = 0,
             high_limit : Int = MAX_INSTANCE,
             network : UInt16? = 0xFFFF_u16)
-
     net = message.network
     if net
       net.destination_specifier = true

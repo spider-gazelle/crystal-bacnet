@@ -2,7 +2,6 @@ require "../../bacnet"
 require "promise"
 require "socket"
 require "log"
-require "set"
 
 class BACnet::Client::IPv4
   Log = ::Log.for("bacnet.client")
@@ -47,15 +46,16 @@ class BACnet::Client::IPv4
   end
 
   {% begin %}
-    {% for klass in %w(IAm ReadProperty ComplexAck) %}
+    {% expects_reply = %w(ReadProperty) %}
+    {% for klass in %w(IAm IHave ReadProperty ComplexAck) %}
       def {{klass.underscore.id}}(address : Socket::IPAddress, *args, **opts)
         message = configure_defaults Client::Message::{{klass.id}}.build(new_message, *args, **opts)
 
-        if invoke_id = message.application.invoke_id
-          send_and_retry(Tracker.new(invoke_id, address, message)).get
-        else
+        {% if expects_reply.includes?(klass) %}
+          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, address, message))
+        {% else %}
           @on_transmit.try &.call(message, address)
-        end
+        {% end %}
       end
 
       def parse_{{klass.underscore.id}}(message : BACnet::Message::IPv4)
@@ -91,11 +91,11 @@ class BACnet::Client::IPv4
     app = message.application
     case app
     in Nil
-      @control_callbacks.each &.call(message, address)
+      spawn { @control_callbacks.each &.call(message, address) }
     in BACnet::ConfirmedRequest
-      @request_callbacks.each &.call(message, address)
+      spawn { @request_callbacks.each &.call(message, address) }
     in BACnet::UnconfirmedRequest
-      @broadcast_callbacks.each .try &.call(message, address)
+      spawn { @broadcast_callbacks.each &.call(message, address) }
     in BACnet::ErrorResponse, BACnet::AbortCode, BACnet::RejectResponse
       if tracker = @mutex.synchronize { @in_flight.delete(app.invoke_id) }
         if app.is_a?(ErrorResponse)
@@ -134,7 +134,7 @@ class BACnet::Client::IPv4
   end
 
   protected def send_and_retry(tracker : Tracker)
-    promise = Promise.new(BACnet::Message::IPv4?, @timeout)
+    promise = Promise.new(BACnet::Message::IPv4, @timeout)
     tracker.promise.then { |message| promise.resolve(message) }
     tracker.promise.catch { |error| promise.reject(error); raise error }
     promise.catch do |error|
@@ -161,11 +161,11 @@ class BACnet::Client::IPv4
 
   class Tracker
     def initialize(@request_id, @address, @request)
-      @promise = Promise.new(BACnet::Message::IPv4?)
+      @promise = Promise.new(BACnet::Message::IPv4)
     end
 
     property request_id : UInt8
-    property promise : Promise::DeferredPromise(BACnet::Message::IPv4?)
+    property promise : Promise::DeferredPromise(BACnet::Message::IPv4)
     property address : Socket::IPAddress
     property request : BACnet::Message::IPv4
     property attempt : Int32 = 0

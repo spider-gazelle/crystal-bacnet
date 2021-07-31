@@ -6,15 +6,15 @@ module BACnet::Client::Message::ReadProperty
 
   def build(message,
             object_id : ObjectIdentifier,
-            property_id : PropertyType | PropertyIdentifier,
+            property_id : PropertyIdentifier::PropertyType | PropertyIdentifier,
             index : Int? = nil,
             network : UInt16? = nil,
             address : String | Bytes? = nil)
-    if property_id.is_a?(PropertyType)
+    if property_id.is_a?(PropertyIdentifier::PropertyType)
       property_id = PropertyIdentifier.new(property_id)
     end
 
-    net = message.network
+    net = message.network.not_nil!
     net.expecting_reply = true
 
     # Message requires routing

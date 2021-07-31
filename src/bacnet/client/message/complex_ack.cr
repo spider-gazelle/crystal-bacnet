@@ -47,7 +47,7 @@ module BACnet::Client::Message::ComplexAck
       raise ArgumentError.new "expected ComplexAck service, passed: #{message}"
     end
 
-    app = message.application.not_nil!
+    app = message.application.not_nil!.as(BACnet::ComplexAck)
     invoke_id = app.invoke_id
     service = app.service
     objects = message.objects
