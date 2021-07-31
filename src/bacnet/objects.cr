@@ -3,7 +3,8 @@ require "./objects/*"
 
 # needs to quack like an Object
 class BACnet::Objects
-  def initialize(@context_specific, @short_tag, @objects)
+  def initialize(@context_specific, tag, @objects)
+    @short_tag = tag.to_u8
   end
 
   getter context_specific : Bool

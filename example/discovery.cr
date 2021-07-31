@@ -40,6 +40,15 @@ end
 registry = BACnet::Client::DeviceRegistry.new(client)
 registry.on_new_device do |device|
   puts "FOUND NEW DEVICE: #{device.vendor_name} #{device.name} #{device.model_name}"
+
+  sleep 1
+  puts "--\n--\n--\n"
+  client.write_property(
+    device.ip_address,
+    BACnet::ObjectIdentifier.new(:analog_value, 2_u32),
+    BACnet::PropertyType::PresentValue,
+    BACnet::Object.new.set_value(10.2_f32)
+  )
 end
 
 # send a who_is out onto the network

@@ -5,6 +5,8 @@ module BACnet
 
   class UnknownPropertyError < Error; end
 
+  alias PropertyType = PropertyIdentifier::PropertyType
+
   # http://kargs.net/BACnet/BACnet_IP_Details.pdf (page 14)
   enum RequestTypeIP6
     BVCLResult                    =    0

@@ -46,8 +46,8 @@ class BACnet::Client::IPv4
   end
 
   {% begin %}
-    {% expects_reply = %w(ReadProperty) %}
-    {% for klass in %w(IAm IHave ReadProperty ComplexAck) %}
+    {% expects_reply = %w(WriteProperty ReadProperty) %}
+    {% for klass in %w(IAm IHave WriteProperty ReadProperty ComplexAck) %}
       def {{klass.underscore.id}}(address : Socket::IPAddress, *args, **opts)
         message = configure_defaults Client::Message::{{klass.id}}.build(new_message, *args, **opts)
 
