@@ -49,7 +49,7 @@ module BACnet::Client::Message::IAm
     {
       object_id:              objects[0].to_object_id,
       max_adpu_length:        objects[1].to_u64,
-      segmentation_supported: SegmentationSupport.from_value(objects[2].to_u64),
+      segmentation_supported: SegmentationSupport.new(objects[2].to_i),
       vendor_id:              objects[3].to_u64,
       network:                network,
       address:                address,

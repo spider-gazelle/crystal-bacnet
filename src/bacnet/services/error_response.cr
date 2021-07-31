@@ -12,8 +12,8 @@ module BACnet
 
     # error_class_data, error_code_data are passed as BACnet objects
     def error_details(objects)
-      klass = ErrorClass.from_value message.objects[0].to_u64
-      code = ErrorCode.from_value message.objects[1].to_u64
+      klass = ErrorClass.new message.objects[0].to_i
+      code = ErrorCode.new message.objects[1].to_i
       {klass, code}
     end
   end

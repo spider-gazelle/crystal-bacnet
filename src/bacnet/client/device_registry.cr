@@ -172,7 +172,7 @@ class BACnet::Client::DeviceRegistry
         @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, object.network, object.address)
       ).get
 
-      object.unit = BACnet::Unit.from_value @client.parse_complex_ack(unit_resp)[:objects][0].to_u64
+      object.unit = BACnet::Unit.new @client.parse_complex_ack(unit_resp)[:objects][0].to_i
       object.value = @client.parse_complex_ack(value_resp)[:objects][0].as(BACnet::Object)
     rescue unknown : BACnet::UnknownPropertyError
     rescue error

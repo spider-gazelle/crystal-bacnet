@@ -99,8 +99,8 @@ class BACnet::Client::IPv4
     in BACnet::ErrorResponse, BACnet::AbortCode, BACnet::RejectResponse
       if tracker = @mutex.synchronize { @in_flight.delete(app.invoke_id) }
         if app.is_a?(ErrorResponse)
-          klass = ErrorClass.from_value message.objects[0].to_u64
-          code = ErrorCode.from_value message.objects[1].to_u64
+          klass = ErrorClass.new message.objects[0].to_i
+          code = ErrorCode.new message.objects[1].to_i
 
           error_message = "request failed with #{app.class} - #{klass}: #{code}"
           Log.trace { error_message }
