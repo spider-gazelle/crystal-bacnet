@@ -84,19 +84,30 @@ class BACnet::Client::DeviceRegistry
     end
   end
 
+  @mutex : Mutex = Mutex.new(:reentrant)
+
+  # returns a list of the devices found
+  def devices
+    @mutex.synchronize { @devices.compact_map { |(_key, device)| device if device.objects_listed? } }
+  end
+
+  # register to be informed when a new device is found
   def on_new_device(&callback : DeviceInfo -> Nil)
     @new_device_callbacks << callback
   end
 
   def inspect_device(ip_address, object_id, network, address, max_adpu_length = nil, segmentation_supported = nil, vendor_id = nil)
     device_id = object_id.instance_number
-    if @devices.has_key?(device_id)
-      Log.debug { "ignoring inspect request as already parsed #{device_id} (#{ip_address})" }
-      return
+
+    @mutex.synchronize do
+      if @devices.has_key?(device_id)
+        Log.debug { "ignoring inspect request as already parsed #{device_id} (#{ip_address})" }
+        return
+      end
     end
 
     device = DeviceInfo.new(ip_address, object_id, network, address, max_adpu_length, segmentation_supported, vendor_id)
-    @devices[device_id] = device
+    @mutex.synchronize { @devices[device_id] = device }
 
     begin
       name_resp = @client.read_property(ip_address, object_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, network, address).get
@@ -139,7 +150,7 @@ class BACnet::Client::DeviceRegistry
     @new_device_callbacks.each &.call(device)
     device
   rescue error
-    @devices.delete(device_id)
+    @mutex.synchronize { @devices.delete(device_id) }
     Log.debug(exception: error) { "failed to obtain object list for #{device_id} (#{ip_address})" }
     nil
   end
