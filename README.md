@@ -19,37 +19,50 @@ Add the dependency to your `shard.yml`:
 
 ## Usage
 
-Currently this implements the code required to parse and generate BACnet messages.
-It does not implement a client.
-
 ```crystal
 
 require "bacnet"
+require "socket"
 
-message = io.read_bytes(BACnet::IP4Message)
-message.data_link.request_type # => BACnet::RequestTypeIP4::OriginalUnicastNPDU
+# ======================
+# Create transport layer
+# ======================
+server = UDPSocket.new
+server.bind "0.0.0.0", 0xBAC0
 
-if network = message.network
-  network.destination.address # => 26001
-  network.expecting_reply? # => true
-  network.hop_count # => 255
+# ======================
+# Hook up the client to the transport
+# ======================
+client = BACnet::Client::IPv4.new
 
-  app_layer = message.application
-  case app_layer
-  when BACnet::ConfirmedRequest
-    app_layer.segmented_message
-    app_layer.max_segments
-  when BACnet::ComplexAck
-  # ...
-  end
-
-  # Objects associated with the request
-  message.objects # => [] of BACnet::Object
-
-  # Helpers for primitive objects exist, constructed objects require request context
-  message.objects.each do |object|
-    puts object.value unless object.context_specific
+client.on_transmit do |message, address|
+  if address.address == Socket::IPAddress::BROADCAST
+    # Broadcast this message, might need to be a unicast to a BBMD
+  else
+    server.send message, to: address
   end
 end
+
+spawn do
+  # Feed data to the client
+  loop do
+    break if server.closed?
+    bytes, client_addr = server.receive
+
+    message = IO::Memory.new(bytes).read_bytes(BACnet::Message::IPv4)
+    client.received message, client_addr
+  end
+end
+
+# ======================
+# Collect device information
+# ======================
+registry = BACnet::Client::DeviceRegistry.new(client)
+registry.on_new_device do |device|
+  puts "FOUND NEW DEVICE: #{device.vendor_name} #{device.name} #{device.model_name}"
+end
+
+# broadcast a who_is out onto the network
+client.who_is
 
 ```
