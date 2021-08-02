@@ -70,6 +70,8 @@ module BACnet::Client::Message::WriteProperty
       address = net.source_address
     end
 
+    objects = message.objects
+
     obj_id = objects[0].to_object_id
     prop_id = objects[1].to_property_id.property_type
 
@@ -92,8 +94,6 @@ module BACnet::Client::Message::WriteProperty
     if (object = objects[index]?) && object.tag == tag
       priority = object.to_i
     end
-
-    objects = message.objects
     {
       object_id: obj_id,
       property:  prop_id,
