@@ -43,12 +43,12 @@ class BACnet::Client::DeviceRegistry
 
     property name : String = ""
     property unit : BACnet::Unit? = nil
-    property! value : BACnet::Object
+    property value : BACnet::Object? = nil
     property changed : ::Time = ::Time.utc
 
     def value=(value)
-      @changed = ::Time.utc
       @value = value
+      @changed = ::Time.utc
     end
 
     # Connection details
@@ -63,6 +63,16 @@ class BACnet::Client::DeviceRegistry
 
     def object_type
       object_ptr.object_type
+    end
+
+    def sync_value(client)
+      begin
+        value_resp = client.read_property(@ip_address, @object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, @network, @address).get
+        self.value = client.parse_complex_ack(value_resp)[:objects][0]?.try &.as(BACnet::Object)
+      rescue unknown : BACnet::UnknownPropertyError
+      rescue error
+        raise error
+      end
     end
   end
 
@@ -178,17 +188,19 @@ class BACnet::Client::DeviceRegistry
     end
 
     begin
-      unit_resp, value_resp = Promise.all(
-        @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::Units, nil, object.network, object.address),
-        @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, object.network, object.address)
-      ).get
-
+      unit_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::Units, nil, object.network, object.address).get
       object.unit = BACnet::Unit.new @client.parse_complex_ack(unit_resp)[:objects][0].to_i
-      object.value = @client.parse_complex_ack(value_resp)[:objects][0].as(BACnet::Object)
     rescue unknown : BACnet::UnknownPropertyError
     rescue error
-      Log.error(exception: error) { "failed to obtain object information for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
-      return
+      Log.error(exception: error) { "failed to obtain unit for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+    end
+
+    begin
+      value_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, object.network, object.address).get
+      object.value = @client.parse_complex_ack(value_resp)[:objects][0]?.try &.as(BACnet::Object)
+    rescue unknown : BACnet::UnknownPropertyError
+    rescue error
+      Log.error(exception: error) { "failed to obtain value for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
     end
 
     object.ready = true
