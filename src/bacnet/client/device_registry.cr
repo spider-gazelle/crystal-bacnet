@@ -172,9 +172,30 @@ class BACnet::Client::DeviceRegistry
     Log.error(exception: error) { "failed to query device at address #{print_addr(device)}: ObjectList[#{index}]" }
   end
 
+  alias ObjectType = ::BACnet::ObjectIdentifier::ObjectType
+
+  # TODO:: map these fields out more
+  OBJECTS_WITH_UNITS = [
+    ObjectType::AnalogInput, ObjectType::AnalogOutput, ObjectType::AnalogValue,
+    ObjectType::IntegerValue, ObjectType::LargeAnalogValue, ObjectType::PositiveIntegerValue,
+    ObjectType::Accumulator, ObjectType::PulseConverter, ObjectType::Loop
+  ]
+
+  OBJECTS_WITH_VALUES = OBJECTS_WITH_UNITS + [
+    ObjectType::BinaryInput, ObjectType::BinaryOutput, ObjectType::BinaryValue,
+    ObjectType::Calendar, ObjectType::Command, ObjectType::LoadControl, ObjectType::AccessDoor,
+    ObjectType::LifeSafetyPoint, ObjectType::LifeSafetyZone, ObjectType::MultiStateInput,
+    ObjectType::MultiStateOutput, ObjectType::MultiStateValue, ObjectType::Schedule,
+    ObjectType::DatetimeValue, ObjectType::BitstringValue, ObjectType::OctetstringValue,
+    ObjectType::DateValue, ObjectType::DatetimePatternValue, ObjectType::TimePatternValue,
+    ObjectType::DatePatternValue, ObjectType::AlertEnrollment, ObjectType::Channel,
+    ObjectType::LightingOutput, ObjectType::CharacterStringValue, ObjectType::TimeValue
+  ]
+
   def parse_object_info(object)
     Log.trace { "parsing object info for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
 
+    # All objects have a name
     begin
       name_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, object.network, object.address).get
       object.name = @client.parse_complex_ack(name_resp)[:objects][0].value.as(String)
@@ -183,20 +204,26 @@ class BACnet::Client::DeviceRegistry
       return
     end
 
-    begin
-      unit_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::Units, nil, object.network, object.address).get
-      object.unit = BACnet::Unit.new @client.parse_complex_ack(unit_resp)[:objects][0].to_i
-    rescue unknown : BACnet::UnknownPropertyError
-    rescue error
-      Log.error(exception: error) { "failed to obtain unit for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+    # Not all objects have a unit
+    if OBJECTS_WITH_UNITS.includes? object.object_ptr.object_type
+      begin
+        unit_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::Units, nil, object.network, object.address).get
+        object.unit = BACnet::Unit.new @client.parse_complex_ack(unit_resp)[:objects][0].to_i
+      rescue unknown : BACnet::UnknownPropertyError
+      rescue error
+        Log.error(exception: error) { "failed to obtain unit for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+      end
     end
 
-    begin
-      value_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, object.network, object.address).get
-      object.value = @client.parse_complex_ack(value_resp)[:objects][0]?.try &.as(BACnet::Object)
-    rescue unknown : BACnet::UnknownPropertyError
-    rescue error
-      Log.error(exception: error) { "failed to obtain value for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+    # Not all objects have a value
+    if OBJECTS_WITH_VALUES.includes? object.object_ptr.object_type
+      begin
+        value_resp = @client.read_property(object.ip_address, object.object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, object.network, object.address).get
+        object.value = @client.parse_complex_ack(value_resp)[:objects][0]?.try &.as(BACnet::Object)
+      rescue unknown : BACnet::UnknownPropertyError
+      rescue error
+        Log.error(exception: error) { "failed to obtain value for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+      end
     end
 
     object.ready = true

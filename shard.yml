@@ -1,5 +1,5 @@
 name: bacnet
-version: 0.10.3
+version: 0.10.4
 crystal: ">= 0.36.1"
 
 dependencies:
