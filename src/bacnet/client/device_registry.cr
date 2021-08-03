@@ -178,7 +178,7 @@ class BACnet::Client::DeviceRegistry
   OBJECTS_WITH_UNITS = [
     ObjectType::AnalogInput, ObjectType::AnalogOutput, ObjectType::AnalogValue,
     ObjectType::IntegerValue, ObjectType::LargeAnalogValue, ObjectType::PositiveIntegerValue,
-    ObjectType::Accumulator, ObjectType::PulseConverter, ObjectType::Loop
+    ObjectType::Accumulator, ObjectType::PulseConverter, ObjectType::Loop,
   ]
 
   OBJECTS_WITH_VALUES = OBJECTS_WITH_UNITS + [
@@ -189,7 +189,7 @@ class BACnet::Client::DeviceRegistry
     ObjectType::DatetimeValue, ObjectType::BitstringValue, ObjectType::OctetstringValue,
     ObjectType::DateValue, ObjectType::DatetimePatternValue, ObjectType::TimePatternValue,
     ObjectType::DatePatternValue, ObjectType::AlertEnrollment, ObjectType::Channel,
-    ObjectType::LightingOutput, ObjectType::CharacterStringValue, ObjectType::TimeValue
+    ObjectType::LightingOutput, ObjectType::CharacterStringValue, ObjectType::TimeValue,
   ]
 
   def parse_object_info(object)
