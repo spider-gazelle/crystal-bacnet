@@ -1,6 +1,6 @@
 require "../../bacnet"
 require "./ipv4_message"
-require "socket/address"
+require "socket"
 
 module BACnet
   # BACnet Virtual Link Control Interface
