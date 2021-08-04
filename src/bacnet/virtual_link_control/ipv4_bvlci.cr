@@ -1,5 +1,6 @@
 require "../../bacnet"
 require "./ipv4_message"
+require "socket/address"
 
 module BACnet
   # BACnet Virtual Link Control Interface
@@ -51,12 +52,19 @@ module BACnet
         Request::DeleteForeignDeviceTableEntry,
       }.includes? request_type
     }) do
-      uint32 :ip
+      uint8 :ip1
+      uint8 :ip2
+      uint8 :ip3
+      uint8 :ip4
       uint16 :port
     end
 
     uint16 :register_ttl, onlyif: ->{ request_type.register_foreign_device? }
 
     enum_field UInt16, result_code : Result = Result::Success, onlyif: ->{ request_type.bvcl_result? }
+
+    def forwarded_address
+      Socket::IPAddress.new("#{address.ip1}.#{address.ip2}.#{address.ip3}.#{address.ip4}", address.port.to_i)
+    end
   end
 end

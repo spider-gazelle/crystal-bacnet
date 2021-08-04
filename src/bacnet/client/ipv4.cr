@@ -88,6 +88,8 @@ class BACnet::Client::IPv4
   def received(message : BACnet::Message::IPv4, address : Socket::IPAddress)
     Log.trace { "received #{message.data_link.request_type} message from #{address.inspect} - #{message.application.class}" }
 
+    address = message.data_link.forwarded_address if message.data_link.request_type.forwarded_npdu?
+
     app = message.application
     case app
     in Nil
