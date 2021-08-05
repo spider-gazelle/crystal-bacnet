@@ -48,13 +48,13 @@ class BACnet::Client::IPv4
   {% begin %}
     {% expects_reply = %w(WriteProperty ReadProperty) %}
     {% for klass in %w(IAm IHave WriteProperty ReadProperty ComplexAck) %}
-      def {{klass.underscore.id}}(address : Socket::IPAddress, *args, **opts)
+      def {{klass.underscore.id}}(ip_address : Socket::IPAddress, *args, **opts)
         message = configure_defaults Client::Message::{{klass.id}}.build(new_message, *args, **opts)
 
         {% if expects_reply.includes?(klass) %}
-          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, address, message))
+          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, ip_address, message))
         {% else %}
-          @on_transmit.try &.call(message, address)
+          @on_transmit.try &.call(message, ip_address)
         {% end %}
       end
 
