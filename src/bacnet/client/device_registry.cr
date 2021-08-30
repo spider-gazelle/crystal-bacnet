@@ -148,8 +148,15 @@ class BACnet::Client::DeviceRegistry
     # Index 0 == max index
     # Index 1 == device info
     # Index 2..max == object info
+    failed = 0
     (2..max_properties).each do |index|
-      query_device(device, index, max_properties)
+      success = query_device(device, index, max_properties)
+
+      # Some devices specify more objects than actually exist
+      unless success
+        failed += 1
+        break if failed > 2
+      end
     end
 
     # obtain object information
@@ -172,8 +179,10 @@ class BACnet::Client::DeviceRegistry
     device.objects << object
 
     log.trace { "new object found at address #{print_addr(object)}: #{object.object_type}-#{object.instance_id}" }
+    true
   rescue error
     log.error(exception: error) { "failed to query device at address #{print_addr(device)}: ObjectList[#{index}]" }
+    false
   end
 
   alias ObjectType = ::BACnet::ObjectIdentifier::ObjectType
