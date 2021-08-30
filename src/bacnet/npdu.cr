@@ -77,9 +77,11 @@ class BACnet::NPDU < BinData
     in String
       assign_mac(destination, address)
       self.destination_specifier = true
+      self.hop_count = 254_u8
     in Bytes
       self.destination.address = address
       self.destination_specifier = true
+      self.hop_count = 254_u8
     in Nil
       assign_mac(destination, "")
       self.destination_specifier = false
