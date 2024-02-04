@@ -3,12 +3,12 @@ module BACnet
     endian :big
 
     bit_field do
-      enum_bits 4, message_type : MessageType = MessageType::Error
+      bits 4, message_type : MessageType = MessageType::Error
       bits 4, :flags
     end
 
-    uint8 :invoke_id
-    enum_field UInt8, service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
+    field invoke_id : UInt8
+    field service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
 
     # error_class_data, error_code_data are passed as BACnet objects
     def error_details(objects)

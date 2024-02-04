@@ -12,36 +12,36 @@ module BACnet
 
       # six octets consisting of the four-octet IP address followed by
       # a two-octet UDP port number shall function analogously to the MAC address
-      uint32 :ip
-      uint16 :port
+      field ip : UInt32
+      field port : UInt16
 
-      uint32 :broadcast_distribution_mask
+      field broadcast_distribution_mask : UInt32
     end
 
     class FDTEntry < BinData
       endian :big
 
-      uint32 :ip
-      uint16 :port
+      field ip : UInt32
+      field port : UInt16
 
-      uint16 :registered_ttl
-      uint16 :remaining_ttl
+      field registered_ttl : UInt16
+      field remaining_ttl : UInt16
     end
 
     # ref: http://www.bacnet.org/Tutorial/BACnetIP/sld005.html
 
-    uint8 :protocol, value: ->{ 0x81_u8 } # 0x81 == BACnet/IP
-    enum_field UInt8, request_type : Request = Request::BVCLResult
-    uint16 :request_length
+    field protocol : UInt8, value: ->{ 0x81_u8 } # 0x81 == BACnet/IP
+    field request_type : Request = Request::BVCLResult
+    field request_length : UInt16
 
-    array bdt_entries : BDTEntry, length: ->{ (request_length - 4) / 10 }, onlyif: ->{
+    field bdt_entries : Array(BDTEntry), length: ->{ (request_length - 4) / 10 }, onlyif: ->{
       {
         Request::ReadBroadcastDistributionTableAck,
         Request::WriteBroadcastDistributionTable,
       }.includes? request_type
     }
 
-    array fdt_entries : FDTEntry, length: ->{ (request_length - 4) / 10 }, onlyif: ->{
+    field fdt_entries : Array(FDTEntry), length: ->{ (request_length - 4) / 10 }, onlyif: ->{
       request_type.read_foreign_device_table_ack?
     }
 
@@ -52,16 +52,16 @@ module BACnet
         Request::DeleteForeignDeviceTableEntry,
       }.includes? request_type
     }) do
-      uint8 :ip1
-      uint8 :ip2
-      uint8 :ip3
-      uint8 :ip4
-      uint16 :port
+      field ip1 : UInt8
+      field ip2 : UInt8
+      field ip3 : UInt8
+      field ip4 : UInt8
+      field port : UInt16
     end
 
-    uint16 :register_ttl, onlyif: ->{ request_type.register_foreign_device? }
+    field register_ttl : UInt16, onlyif: ->{ request_type.register_foreign_device? }
 
-    enum_field UInt16, result_code : Result = Result::Success, onlyif: ->{ request_type.bvcl_result? }
+    field result_code : Result = Result::Success, onlyif: ->{ request_type.bvcl_result? }
 
     def forwarded_address
       Socket::IPAddress.new("#{address.ip1}.#{address.ip2}.#{address.ip3}.#{address.ip4}", address.port.to_i)

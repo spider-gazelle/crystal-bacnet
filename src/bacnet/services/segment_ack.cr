@@ -5,7 +5,7 @@ module BACnet
     endian :big
 
     bit_field do
-      enum_bits 4, message_type : MessageType = MessageType::SegmentACK
+      bits 4, message_type : MessageType = MessageType::SegmentACK
 
       # APDU flags
       bits 2, :ignore
@@ -13,11 +13,11 @@ module BACnet
       bool from_server
     end
 
-    uint8 :invoke_id
+    field invoke_id : UInt8
 
     group :segment do
-      uint8 :sequence_number
-      uint8 :window_size
+      field sequence_number : UInt8
+      field window_size : UInt8
     end
   end
 end

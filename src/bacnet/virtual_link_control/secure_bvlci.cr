@@ -19,22 +19,22 @@ module BACnet
         bool must_understand
         bool header_data
 
-        enum_bits 5, header_type : Type = Type::SecurePath
+        bits 5, header_type : Type = Type::SecurePath
       end
 
-      uint16 :data_length, value: ->{ header_type.proprietary? ? (proprietary.data.size + 3) : data.size }, onlyif: ->{ header_data }
-      bytes :data, length: ->{ data_length }, onlyif: ->{ header_data && !header_type.proprietary? }
+      field data_length : UInt16, value: ->{ header_type.proprietary? ? (proprietary.data.size + 3) : data.size }, onlyif: ->{ header_data }
+      field data : Bytes, length: ->{ data_length }, onlyif: ->{ header_data && !header_type.proprietary? }
 
       group :proprietary, onlyif: ->{ header_data && header_type.proprietary? } do
-        uint16 :vendor_id
-        uint8 :type
-        bytes :data, length: ->{ parent.data_length - 3 }
+        field vendor_id : UInt16
+        field type : UInt8
+        field data : Bytes, length: ->{ parent.data_length - 3 }
       end
     end
 
     # NOTE:: a UUID constant needs to be generated
 
-    enum_field UInt8, request_type : Request = Request::BVCLResult
+    field request_type : Request = Request::BVCLResult
     bit_field do
       # true == network layer message, message type field is present
       bits 4, :reserved
@@ -44,32 +44,32 @@ module BACnet
       bool destination_options_present
       bool data_options_present
     end
-    uint16 :message_id
+    field message_id : UInt16
 
     # Broadcast VMAC is 0xFFFFFFFFFFFF
-    bytes :source_vmac, onlyif: ->{ source_specifier }, length: ->{ 6 }
-    bytes :destination_vmac, onlyif: ->{ destination_specifier }, length: ->{ 6 }
+    field source_vmac : Bytes, onlyif: ->{ source_specifier }, length: ->{ 6 }
+    field destination_vmac : Bytes, onlyif: ->{ destination_specifier }, length: ->{ 6 }
 
     # Destination Options
-    variable_array destination_options : Header, onlyif: ->{ destination_options_present }, read_next: ->{
+    field destination_options : Array(Header), onlyif: ->{ destination_options_present }, read_next: ->{
       destination_options.empty? || destination_options[-1].more_headers
     }
 
     # Data Options
-    variable_array data_options : Header, onlyif: ->{ data_options_present }, read_next: ->{
+    field data_options : Array(Header), onlyif: ->{ data_options_present }, read_next: ->{
       data_options.empty? || data_options[-1].more_headers
     }
 
     # Payloads:
     group :result, onlyif: ->{ request_type.bvcl_result? } do
-      uint8 :bvlc_function
-      uint8 :result_code
+      field bvlc_function : UInt8
+      field result_code : UInt8
 
       # possibly result_code == 0x01
       group :error, onlyif: ->{ result_code > 0 } do
-        uint8 :header_marker
-        uint16 :class
-        uint16 :code
+        field header_marker : UInt8
+        field class : UInt16
+        field code : UInt16
 
         remaining_bytes :message_bytes
 
@@ -87,23 +87,23 @@ module BACnet
 
     group :advertisement, onlyif: ->{ request_type.advertisement? } do
       # 0 == No hub connection, 1 == Connected to primary hub, 2 == Connected to failover hub
-      uint8 :hub_connection_status
+      field hub_connection_status : UInt8
       # 0 == does not support, 1 == The node supports accepting direct connections
-      uint8 :accept_direct_connection
-      uint16 :max_bvlc_length
-      uint16 :max_npdu_length
+      field accept_direct_connection : UInt8
+      field max_bvlc_length : UInt16
+      field max_npdu_length : UInt16
     end
 
     group :connect_details, onlyif: ->{ request_type.connect_request? || request_type.connect_accept? } do
-      bytes :vmac, length: ->{ 6 }
-      bytes :device_uuid, length: ->{ 16 }
-      uint16 :max_bvlc_length
-      uint16 :max_npdu_length
+      field vmac : Bytes, length: ->{ 6 }
+      field device_uuid : Bytes, length: ->{ 16 }
+      field max_bvlc_length : UInt16
+      field max_npdu_length : UInt16
     end
 
     group :proprietary, onlyif: ->{ request_type.proprietary_message? } do
-      uint16 :vendor_id
-      uint8 :type
+      field vendor_id : UInt16
+      field type : UInt8
       remaining_bytes :data
     end
   end

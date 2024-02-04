@@ -1,5 +1,5 @@
 module BACnet
-  enum RejectCode
+  enum RejectCode : UInt8
     Other                    = 0
     BufferOverflow           = 1
     InconsistentParameters   = 2
@@ -16,11 +16,11 @@ module BACnet
     endian :big
 
     bit_field do
-      enum_bits 4, message_type : MessageType = MessageType::Reject
-      bits 4, :flags
+      bits 4, message_type : MessageType = MessageType::Reject
+      bits 4, flags
     end
 
-    uint8 :invoke_id
-    enum_field UInt8, reason : RejectCode = RejectCode::Other
+    field invoke_id : UInt8
+    field reason : RejectCode = RejectCode::Other
   end
 end

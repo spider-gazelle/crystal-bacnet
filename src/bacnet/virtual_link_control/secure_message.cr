@@ -4,7 +4,7 @@ require "../message"
 require "../object"
 
 class BACnet::Message::Secure
-  enum Request
+  enum Request : UInt8
     BVCLResult                =    0
     EncapsulatedNPDU          =    1
     AddressResolution         =    2

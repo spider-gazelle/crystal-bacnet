@@ -44,7 +44,7 @@ module BACnet
   end
 
   # ConfirmedRequest messages (NPDU description page 7)
-  enum ConfirmedService
+  enum ConfirmedService : UInt8
     # Alarm and Event Services
     AcknowledgeAlarm     = 0
     CovNotification      = 1
@@ -96,7 +96,7 @@ module BACnet
   end
 
   # UnconfirmedRequest messages (NPDU description page 8)
-  enum UnconfirmedService
+  enum UnconfirmedService : UInt8
     IAm                     =  0
     IHave                   =  1
     CovNotification         =  2

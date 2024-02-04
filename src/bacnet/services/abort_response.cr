@@ -1,5 +1,5 @@
 module BACnet
-  enum AbortCode
+  enum AbortCode : UInt8
     Other                         =  0
     BufferOverflow                =  1
     InvalidApduInThisState        =  2
@@ -18,12 +18,12 @@ module BACnet
     endian :big
 
     bit_field do
-      enum_bits 4, message_type : MessageType = MessageType::Abort
+      bits 4, message_type : MessageType = MessageType::Abort
       bits 3, :flags
       bool from_server
     end
 
-    uint8 :invoke_id
-    enum_field UInt8, reason : AbortCode = AbortCode::Other
+    field invoke_id : UInt8
+    field reason : AbortCode = AbortCode::Other
   end
 end

@@ -5,7 +5,7 @@ require "../object"
 
 class BACnet::Message::IPv4
   # Header
-  enum Request
+  enum Request : UInt8
     BVCLResult                        =    0
     WriteBroadcastDistributionTable   =    1
     ReadBroadcastDistributionTable    =    2
@@ -22,7 +22,7 @@ class BACnet::Message::IPv4
     SecureBVLL = 0x0c
   end
 
-  enum Result
+  enum Result : UInt16
     Success                            =    0
     WriteBroadcastDistributionTableNAK = 0x10
     ReadBroadcastDistributionTableNAK  = 0x20

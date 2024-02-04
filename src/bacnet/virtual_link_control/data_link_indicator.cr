@@ -16,9 +16,9 @@ module BACnet
     #         - NPDU
     # * APDU /
 
-    uint8 :protocol # 0x81 == BACnet/IP, 0x82 == BACnet/IP6
-    uint8 :request_type
-    uint16 :request_length
+    field protocol : UInt8 # 0x81 == BACnet/IP, 0x82 == BACnet/IP6
+    field request_type : UInt8
+    field request_length : UInt16
 
     def is_ipv4?
       protocol == 0x81_u8

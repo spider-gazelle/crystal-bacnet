@@ -11,13 +11,13 @@ class BACnet::Object < BinData
     bits 3, :uint3_length
   end
 
-  uint8 :ext_tag, onlyif: ->{ short_tag == 0x0F_u8 }
+  field ext_tag : UInt8, onlyif: ->{ short_tag == 0x0F_u8 }
 
-  uint8 :uint8_length, onlyif: ->{ uint3_length == 5_u8 }
-  uint16 :uint16_length, onlyif: ->{ uint3_length == 5_u8 && uint8_length == 254_u8 }
-  uint32 :uint32_length, onlyif: ->{ uint3_length == 5_u8 && uint8_length == 255_u8 }
+  field uint8_length : UInt8, onlyif: ->{ uint3_length == 5_u8 }
+  field uint16_length : UInt16, onlyif: ->{ uint3_length == 5_u8 && uint8_length == 254_u8 }
+  field uint32_length : UInt32, onlyif: ->{ uint3_length == 5_u8 && uint8_length == 255_u8 }
 
-  bytes :data, length: ->{ length }
+  field data : Bytes, length: ->{ length }
 
   def tag
     if short_tag == 0x0F_u8
@@ -229,8 +229,7 @@ class BACnet::Object < BinData
   end
 
   def to_property_id
-    io = IO::Memory.new(data, writeable: false)
-    io.read_bytes(BACnet::PropertyIdentifier, IO::ByteFormat::BigEndian)
+    PropertyIdentifier.new PropertyIdentifier::PropertyType.from_value(to_u64)
   end
 
   def set_value(value, context_specific : Bool = false, tag : Int? = nil)

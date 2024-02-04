@@ -4,27 +4,6 @@ module BACnet
   class ObjectIdentifier < BinData
     endian :big
 
-    bit_field do
-      enum_bits 10, object_type : ObjectType = ObjectType::Device
-      bits 22, :instance_number
-    end
-
-    def initialize
-    end
-
-    def initialize(object_type : ObjectType, instance_number : Int)
-      self.object_type = object_type
-      @instance_number = instance_number.to_u32
-    end
-
-    def inspect(io : IO) : Nil
-      super(io)
-
-      io << "\b #type="
-      object_type.to_s(io)
-      io << ">"
-    end
-
     enum ObjectType
       AnalogInput           =  0
       AnalogOutput          =  1
@@ -86,6 +65,27 @@ module BACnet
       ElevatorGroup         = 57
       Escalator             = 58
       Lift                  = 59
+    end
+
+    bit_field do
+      bits 10, object_type : ObjectType = ObjectType::Device
+      bits 22, :instance_number
+    end
+
+    def initialize
+    end
+
+    def initialize(object_type : ObjectType, instance_number : Int)
+      self.object_type = object_type
+      @instance_number = instance_number.to_u32
+    end
+
+    def inspect(io : IO) : Nil
+      super(io)
+
+      io << "\b #type="
+      object_type.to_s(io)
+      io << ">"
     end
   end
 end

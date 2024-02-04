@@ -4,10 +4,10 @@ module BACnet
   class Date < BinData
     endian :big
 
-    uint8 :year_raw
-    uint8 :month_raw
-    uint8 :day_raw
-    uint8 :day_of_week # Monday == 1, Sunday == 7
+    field year_raw : UInt8
+    field month_raw : UInt8
+    field day_raw : UInt8
+    field day_of_week : UInt8 # Monday == 1, Sunday == 7
 
     UNSPECIFIED       = 255_u8
     LAST_DAY_OF_MONTH =  32_u8

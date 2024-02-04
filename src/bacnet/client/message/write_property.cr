@@ -12,8 +12,8 @@ module BACnet::Client::Message::WriteProperty
             priority : Int? = nil,
             network : UInt16? = nil,
             address : String | Bytes? = nil)
-    if property_id.is_a?(PropertyIdentifier::PropertyType)
-      property_id = PropertyIdentifier.new(property_id)
+    if property_id.is_a?(PropertyIdentifier)
+      property_id = property_id.property_type
     end
 
     unless objects.is_a?(Array)

@@ -4,7 +4,7 @@ module BACnet
     endian :big
 
     bit_field do
-      enum_bits 4, message_type : MessageType = MessageType::ComplexACK
+      bits 4, message_type : MessageType = MessageType::ComplexACK
 
       # APDU flags
       bool segmented_message
@@ -12,13 +12,13 @@ module BACnet
       bits 2, :ignore
     end
 
-    uint8 :invoke_id
+    field invoke_id : UInt8
 
     group :segment, onlyif: ->{ segmented_message } do
-      uint8 :sequence_number
-      uint8 :window_size
+      field sequence_number : UInt8
+      field window_size : UInt8
     end
 
-    enum_field UInt8, service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
+    field service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
   end
 end

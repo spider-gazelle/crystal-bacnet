@@ -5,7 +5,7 @@ module BACnet
     endian :big
 
     bit_field do
-      enum_bits 4, message_type : MessageType = MessageType::ConfirmedRequest
+      bits 4, message_type : MessageType = MessageType::ConfirmedRequest
 
       # APDU flags
       bool segmented_request
@@ -32,13 +32,13 @@ module BACnet
       MAX_SIZE[max_size_indicator]
     end
 
-    uint8 :invoke_id
+    field invoke_id : UInt8
 
     group :segment, onlyif: ->{ segmented_request } do
-      uint8 :sequence_number
-      uint8 :window_size
+      field sequence_number : UInt8
+      field window_size : UInt8
     end
 
-    enum_field UInt8, service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
+    field service : ConfirmedService = ConfirmedService::AcknowledgeAlarm
   end
 end

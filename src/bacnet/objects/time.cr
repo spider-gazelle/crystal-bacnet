@@ -6,10 +6,10 @@ module BACnet
 
     UNSPECIFIED = 255_u8
 
-    uint8 :hour_raw
-    uint8 :minute_raw
-    uint8 :second_raw
-    uint8 :hundredth_raw
+    field hour_raw : UInt8
+    field minute_raw : UInt8
+    field second_raw : UInt8
+    field hundredth_raw : UInt8
 
     property timezone : ::Time::Location = ::Time::Location::UTC
 

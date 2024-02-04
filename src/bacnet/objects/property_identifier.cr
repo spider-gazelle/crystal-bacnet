@@ -4,12 +4,10 @@ module BACnet
   class PropertyIdentifier < BinData
     endian :big
 
-    enum_field UInt8, property_type : PropertyType = PropertyType::All
-
     def initialize(@property_type : PropertyType = PropertyType::All)
     end
 
-    enum PropertyType
+    enum PropertyType : UInt16
       AckedTransitions                 =   0
       AckRequired                      =   1
       Action                           =   2
@@ -467,5 +465,7 @@ module BACnet
       DefaultSubordinateRelationship   = 490
       Represents                       = 491
     end
+
+    field property_type : PropertyType = PropertyType::All
   end
 end

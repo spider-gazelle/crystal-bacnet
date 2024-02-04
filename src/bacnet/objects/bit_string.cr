@@ -4,7 +4,7 @@ module BACnet
   class BitString < BinData
     endian :big
 
-    uint8 :ignore
+    field ignore : UInt8
     remaining_bytes :bitdata
 
     def size
