@@ -118,6 +118,7 @@ module BACnet
     NotSupported
   end
 
+  # https://reference.opcfoundation.org/BACnet/v200/docs/11
   enum Unit
     MetersPerSecondPerSecond        = 166
     SquareMeters                    =   0
