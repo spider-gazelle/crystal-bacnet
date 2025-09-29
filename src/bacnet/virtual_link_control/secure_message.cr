@@ -1,9 +1,14 @@
+require "uuid"
+require "random"
 require "../../bacnet"
 require "../services/*"
 require "../message"
 require "../object"
+require "./message_base"
 
 class BACnet::Message::Secure
+  include Message::Base
+
   enum Request : UInt8
     BVCLResult                =    0
     EncapsulatedNPDU          =    1
@@ -28,9 +33,6 @@ class BACnet::Message::Secure
   end
 
   property data_link : Secure::BVLCI
-  property message : Message
-
-  forward_missing_to @message
 
   def self.from_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::BigEndian) : Secure
     # Parse only the bytes that make up the message

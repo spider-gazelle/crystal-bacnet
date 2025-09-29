@@ -4,7 +4,7 @@ class BACnet::NPDU < BinData
   endian :big
 
   # NPCI
-  field version : UInt8, value: ->{ 1_u8 }
+  field version : UInt8, value: -> { 1_u8 }
   bit_field do
     # true == network layer message, message type field is present
     bool network_layer_message
@@ -18,19 +18,19 @@ class BACnet::NPDU < BinData
     bits 2, priority : Priority = Priority::Normal
   end
 
-  group :destination, onlyif: ->{ destination_specifier } do
+  group :destination, onlyif: -> { destination_specifier } do
     field network : UInt16
-    field address_length : UInt8, value: ->{ address.size }
-    field address : Bytes, length: ->{ address_length }
+    field address_length : UInt8, value: -> { address.size }
+    field address : Bytes, length: -> { address_length }
   end
 
-  group :source, onlyif: ->{ source_specifier } do
+  group :source, onlyif: -> { source_specifier } do
     field network : UInt16
-    field address_length : UInt8, value: ->{ address.size }
-    field address : Bytes, length: ->{ address_length }
+    field address_length : UInt8, value: -> { address.size }
+    field address : Bytes, length: -> { address_length }
   end
 
-  field hop_count : UInt8, onlyif: ->{ destination_specifier }
+  field hop_count : UInt8, onlyif: -> { destination_specifier }
 
   # Network layer message
   enum NetworkMessage
@@ -46,8 +46,8 @@ class BACnet::NPDU < BinData
     DisconnectNetwork   = 9
   end
 
-  field network_message_type : UInt8, onlyif: ->{ network_layer_message }
-  field vendor_id : UInt16, onlyif: ->{ network_layer_message && (network_message_type >= 0x80_u8) }
+  field network_message_type : UInt8, onlyif: -> { network_layer_message }
+  field vendor_id : UInt16, onlyif: -> { network_layer_message && (network_message_type >= 0x80_u8) }
 
   # When network message type is a RejectMessage
   enum RejectReson

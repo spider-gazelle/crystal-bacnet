@@ -11,13 +11,13 @@ class BACnet::Object < BinData
     bits 3, :uint3_length
   end
 
-  field ext_tag : UInt8, onlyif: ->{ short_tag == 0x0F_u8 }
+  field ext_tag : UInt8, onlyif: -> { short_tag == 0x0F_u8 }
 
-  field uint8_length : UInt8, onlyif: ->{ uint3_length == 5_u8 }
-  field uint16_length : UInt16, onlyif: ->{ uint3_length == 5_u8 && uint8_length == 254_u8 }
-  field uint32_length : UInt32, onlyif: ->{ uint3_length == 5_u8 && uint8_length == 255_u8 }
+  field uint8_length : UInt8, onlyif: -> { uint3_length == 5_u8 }
+  field uint16_length : UInt16, onlyif: -> { uint3_length == 5_u8 && uint8_length == 254_u8 }
+  field uint32_length : UInt32, onlyif: -> { uint3_length == 5_u8 && uint8_length == 255_u8 }
 
-  field data : Bytes, length: ->{ length }
+  field data : Bytes, length: -> { length }
 
   def tag
     if short_tag == 0x0F_u8

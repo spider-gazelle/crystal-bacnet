@@ -1,6 +1,10 @@
 require "bindata"
 
 module BACnet
+  Log = ::Log.for(self)
+
+  class_property logger : ::Log = Log
+
   class Error < RuntimeError; end
 
   class UnknownPropertyError < Error; end

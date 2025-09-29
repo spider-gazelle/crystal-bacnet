@@ -1,5 +1,5 @@
 name: bacnet
-version: 0.11.0
+version: 1.0.0
 crystal: ">= 0.36.1"
 
 dependencies:
@@ -8,7 +8,6 @@ dependencies:
 
   promise:
     github: spider-gazelle/promise
-
 
 development_dependencies:
   ameba:

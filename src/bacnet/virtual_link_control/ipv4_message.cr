@@ -2,8 +2,11 @@ require "../../bacnet"
 require "../services/*"
 require "../message"
 require "../object"
+require "./message_base"
 
 class BACnet::Message::IPv4
+  include Message::Base
+
   # Header
   enum Request : UInt8
     BVCLResult                        =    0
@@ -40,9 +43,6 @@ class BACnet::Message::IPv4
   end
 
   property data_link : IPv4::BVLCI
-  property message : Message
-
-  forward_missing_to @message
 
   def self.hint(io : IO) : DataLinkIndicator
     bytes = io.peek

@@ -34,7 +34,7 @@ module BACnet
 
     field invoke_id : UInt8
 
-    group :segment, onlyif: ->{ segmented_request } do
+    group :segment, onlyif: -> { segmented_request } do
       field sequence_number : UInt8
       field window_size : UInt8
     end

@@ -1,38 +1,87 @@
 require "../../bacnet"
 require "promise"
-require "socket"
+require "uuid"
 require "log"
 
-class BACnet::Client::IPv4
+class BACnet::Client::SecureConnect
   def initialize(
     @retries : Int32 = 3,
     @timeout : ::Time::Span = 5.seconds,
+    @uuid : UUID = UUID.v4,
+    @vmac : Bytes = SecureConnect.generate_vmac,
   )
     @invoke_id = rand(0xFF).to_u8
+    @message_id = rand(0xFFFF).to_u16
     @in_flight = {} of UInt8 => Tracker
-    @control_callbacks = [] of (BACnet::Message::IPv4, Socket::IPAddress) -> Nil
-    @request_callbacks = [] of (BACnet::Message::IPv4, Socket::IPAddress) -> Nil
+    @control_callbacks = [] of (BACnet::Message::Secure) -> Nil
+    @request_callbacks = [] of (BACnet::Message::Secure) -> Nil
     @broadcast_callbacks = [] of (BACnet::Message::Base, Socket::IPAddress?) -> Nil
   end
 
   @invoke_id : UInt8
+  @message_id : UInt16
   @mutex : Mutex = Mutex.new(:reentrant)
 
-  protected def next_invoke_id
+  getter uuid : UUID
+  getter vmac : Bytes
+
+  protected def next_invoke_id : UInt8
     @mutex.synchronize do
       next_id = @invoke_id &+ 1
       @invoke_id = next_id
     end
   end
 
+  protected def next_message_id : UInt16
+    @mutex.synchronize do
+      next_id = @message_id &+ 1
+      @message_id = next_id
+    end
+  end
+
+  def connect!
+    data_link = BACnet::Message::Secure::BVLCI.new
+    data_link.request_type = BACnet::Message::Secure::Request::ConnectRequest
+    data_link.source_specifier = true
+    data_link.source_vmac = @vmac
+    data_link.message_id = next_message_id
+    data_link.connect_details.vmac = @vmac
+    data_link.connect_details.device_uuid = @uuid.bytes.to_slice
+    data_link.connect_details.max_bvlc_length = 65535_u16 # maximum BVLC size
+    data_link.connect_details.max_npdu_length = 61327_u16 # maximum BVLC size (65535) minus the 16-byte BVLC header and minus 4192 bytes reserved for data options
+
+    # TODO:: create a promise and parse the Connect Accept request
+    message = BACnet::Message::Secure.new(data_link)
+    @on_transmit.try(&.call(message))
+  end
+
+  def heartbeat!
+    data_link = BACnet::Message::Secure::BVLCI.new
+    data_link.request_type = BACnet::Message::Secure::Request::HeartbeatRequest
+    data_link.message_id = next_message_id
+
+    message = BACnet::Message::Secure.new(data_link)
+    @on_transmit.try(&.call(message))
+  end
+
+  def heartbeat_ack!(message : BACnet::Message::Secure)
+    raise ArgumentError.new("expected heartbeat request, not #{message.data_link.request_type}") unless message.data_link.request_type.heartbeat_request?
+    message.data_link.request_type = BACnet::Message::Secure::Request::HeartbeatACK
+    @on_transmit.try(&.call(message))
+  end
+
   def new_message
-    data_link = BACnet::Message::IPv4::BVLCI.new
+    data_link = BACnet::Message::Secure::BVLCI.new
     network = NPDU.new
-    BACnet::Message::IPv4.new(data_link, network)
+    BACnet::Message::Secure.new(data_link, network)
   end
 
   protected def configure_defaults(message)
-    message.data_link.request_type = BACnet::Message::IPv4::Request::OriginalUnicastNPDU
+    data_link = message.data_link
+    data_link.request_type = BACnet::Message::Secure::Request::EncapsulatedNPDU
+    data_link.source_specifier = true
+    data_link.source_vmac = @vmac
+    data_link.message_id = next_message_id
 
     app = message.application
     case app
@@ -43,17 +92,33 @@ class BACnet::Client::IPv4
     message
   end
 
+  def self.generate_vmac : Bytes
+    vmac = Bytes.new(6)
+    Random::Secure.random_bytes(vmac)
+
+    # Ensure not all 0s or all FFs
+    if vmac.all?(&.zero?) || vmac.all? { |b| b == 0xFF_u8 }
+      return generate_vmac
+    end
+
+    vmac
+  end
+
+  def self.generate_uuid_bytes : Bytes
+    uuid = UUID.v4
+    uuid.bytes.to_slice # 16-byte representation
+  end
+
   {% begin %}
     {% expects_reply = %w(WriteProperty ReadProperty) %}
     {% for klass in %w(IAm IHave WriteProperty ReadProperty ComplexAck) %}
       def {{klass.underscore.id}}(*args, ip_address : Socket::IPAddress? = nil, **opts)
-        raise ArgumentError.new("ip_address argument required for IPv4 clients") unless ip_address
         message = configure_defaults Client::Message::{{klass.id}}.build(new_message, *args, **opts)
 
         {% if expects_reply.includes?(klass) %}
-          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, ip_address, message))
+          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, message))
         {% else %}
-          @on_transmit.try &.call(message, ip_address)
+          @on_transmit.try &.call(message)
         {% end %}
       end
 
@@ -65,17 +130,17 @@ class BACnet::Client::IPv4
 
   def who_is(*args, **opts)
     message = configure_defaults Client::Message::WhoIs.build(new_message, *args, **opts)
-    @on_transmit.try &.call(message, Socket::IPAddress.new("255.255.255.255", 0xBAC0))
+    @on_transmit.try &.call(message)
   end
 
-  def on_transmit(&@on_transmit : (BACnet::Message::IPv4, Socket::IPAddress) -> Nil)
+  def on_transmit(&@on_transmit : (BACnet::Message::Secure) -> Nil)
   end
 
-  def on_control_info(&callback : (BACnet::Message::IPv4, Socket::IPAddress) -> Nil)
+  def on_control_info(&callback : (BACnet::Message::Secure) -> Nil)
     @control_callbacks << callback
   end
 
-  def on_request(&callback : (BACnet::Message::IPv4, Socket::IPAddress) -> Nil)
+  def on_request(&callback : (BACnet::Message::Secure) -> Nil)
     @request_callbacks << callback
   end
 
@@ -84,19 +149,22 @@ class BACnet::Client::IPv4
   end
 
   # ameba:disable Metrics/CyclomaticComplexity
-  def received(message : BACnet::Message::IPv4, address : Socket::IPAddress)
-    BACnet.logger.debug { "received #{message.data_link.request_type} message from #{address.inspect} - #{message.application.class}" }
-
-    address = message.data_link.forwarded_address if message.data_link.request_type.forwarded_npdu?
+  def received(message : BACnet::Message::Secure)
+    BACnet.logger.debug { "received #{message.data_link.request_type} message: #{message.application.class}" }
 
     app = message.application
     case app
     in Nil
-      spawn { @control_callbacks.each &.call(message, address) }
+      case message.data_link.request_type
+      when .heartbeat_request?
+        heartbeat_ack!(message)
+      else
+        spawn { @control_callbacks.each &.call(message) }
+      end
     in BACnet::ConfirmedRequest
-      spawn { @request_callbacks.each &.call(message, address) }
+      spawn { @request_callbacks.each &.call(message) }
     in BACnet::UnconfirmedRequest
-      spawn { @broadcast_callbacks.each &.call(message, address) }
+      spawn { @broadcast_callbacks.each &.call(message) }
     in BACnet::ErrorResponse, BACnet::AbortCode, BACnet::RejectResponse
       if tracker = @mutex.synchronize { @in_flight.delete(app.invoke_id) }
         if app.is_a?(ErrorResponse)
@@ -135,13 +203,13 @@ class BACnet::Client::IPv4
   end
 
   protected def send_and_retry(tracker : Tracker)
-    promise = Promise.new(BACnet::Message::IPv4, @timeout)
+    promise = Promise.new(BACnet::Message::Secure, @timeout)
     tracker.promise.then { |message| promise.resolve(message) }
     tracker.promise.catch { |error| promise.reject(error); raise error }
     promise.catch do |error|
       case error
       when Promise::Timeout
-        BACnet.logger.debug { "timeout sending message to #{tracker.address.inspect}" }
+        BACnet.logger.debug { "timeout sending message #{tracker.request_id}" }
         tracker.attempt += 1
         if tracker.attempt <= @retries
           send_and_retry(tracker)
@@ -156,19 +224,18 @@ class BACnet::Client::IPv4
     end
 
     @mutex.synchronize { @in_flight[tracker.request_id] = tracker }
-    @on_transmit.try &.call(tracker.request, tracker.address)
+    @on_transmit.try &.call(tracker.request)
     tracker.promise
   end
 
   class Tracker
-    def initialize(@request_id, @address, @request)
-      @promise = Promise.new(BACnet::Message::IPv4)
+    def initialize(@request_id, @request)
+      @promise = Promise.new(BACnet::Message::Secure)
     end
 
     property request_id : UInt8
-    property promise : Promise::DeferredPromise(BACnet::Message::IPv4)
-    property address : Socket::IPAddress
-    property request : BACnet::Message::IPv4
+    property promise : Promise::DeferredPromise(BACnet::Message::Secure)
+    property request : BACnet::Message::Secure
     property attempt : Int32 = 0
   end
 end
