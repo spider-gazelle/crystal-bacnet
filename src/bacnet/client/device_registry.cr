@@ -70,7 +70,7 @@ class BACnet::Client::DeviceRegistry
     end
   end
 
-  def initialize(@client : BACnet::Client::IPv4 | BACnet::Client::SecureConnect)
+  def initialize(@client : BACnet::Client::IPv4 | BACnet::Client::SecureConnect, @log = ::BACnet.logger)
     @devices = {} of UInt32 => DeviceInfo
     @new_device_callbacks = [] of DeviceInfo -> Nil
     @client.on_broadcast do |message, remote_address|
@@ -78,22 +78,18 @@ class BACnet::Client::DeviceRegistry
       case app.service
       when .i_am?
         details = client.parse_i_am(message)
-        BACnet.logger.info { "received IAm message #{details}" }
+        log.info { "received IAm message #{details}" }
         inspect_device(**details, ip_address: remote_address)
       when .i_have?
         details = client.parse_i_have(message)
-        BACnet.logger.info { "received IHave message #{details}" }
+        log.info { "received IHave message #{details}" }
         inspect_device details[:device_id], details[:network], details[:address], ip_address: remote_address
       end
     end
   end
 
   @mutex : Mutex = Mutex.new(:reentrant)
-
-  @[AlwaysInline]
-  protected def log
-    BACnet.logger
-  end
+  getter log : ::Log
 
   # returns a list of the devices found
   def devices
