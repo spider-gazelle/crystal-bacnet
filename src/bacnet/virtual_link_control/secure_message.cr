@@ -7,7 +7,7 @@ require "../object"
 require "./message_base"
 
 class BACnet::Message::Secure
-  include Message::Base
+  include ::BACnet::Message::Base
 
   enum Request : UInt8
     BVCLResult                =    0

@@ -5,7 +5,7 @@ require "../object"
 require "./message_base"
 
 class BACnet::Message::IPv4
-  include Message::Base
+  include ::BACnet::Message::Base
 
   # Header
   enum Request : UInt8
