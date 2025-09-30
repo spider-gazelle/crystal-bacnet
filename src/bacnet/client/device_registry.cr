@@ -118,7 +118,7 @@ class BACnet::Client::DeviceRegistry
     end
 
     def sync_value(client)
-      value_resp = client.read_property(@object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, @network, @address, link_address: @link_address).get
+      value_resp = client.read_property(@object_ptr, BACnet::PropertyIdentifier::PropertyType::PresentValue, nil, @network, @address, link_address: link_address).get
       self.value = client.parse_complex_ack(value_resp)[:objects][0]?.try &.as(BACnet::Object)
     rescue unknown : BACnet::UnknownPropertyError
     end
