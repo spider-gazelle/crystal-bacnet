@@ -88,7 +88,7 @@ module BACnet
       self.object_value = object_type.to_u16
     end
 
-    def object_type : ObjectType || UInt16
+    def object_type : ObjectType | UInt16
       ObjectType.from_value?(object_value) || object_value
     end
 
