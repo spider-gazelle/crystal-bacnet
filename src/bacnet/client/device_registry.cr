@@ -257,13 +257,14 @@ class BACnet::Client::DeviceRegistry
   def parse_object_info(object)
     log.trace { "parsing object info for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
 
-    # All objects have a name
+    # Typically objects have a name, however this isn't critical
     begin
       name_resp = @client.read_property(object.object_ptr, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, object.network, object.address, link_address: object.link_address).get
       object.name = @client.parse_complex_ack(name_resp)[:objects][0].value.as(String)
     rescue error
-      log.error(exception: error) { "failed to obtain object information for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
-      return
+      name = "#{print_addr(object)}: #{object.object_type}[#{object.instance_id}]"
+      object.name = name
+      log.error(exception: error) { "failed to obtain object name for #{name}" }
     end
 
     # Not all objects have a unit
