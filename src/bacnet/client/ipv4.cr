@@ -12,7 +12,7 @@ class BACnet::Client::IPv4
     @in_flight = {} of UInt8 => Tracker
     @control_callbacks = [] of (BACnet::Message::IPv4, Socket::IPAddress) -> Nil
     @request_callbacks = [] of (BACnet::Message::IPv4, Socket::IPAddress) -> Nil
-    @broadcast_callbacks = [] of (BACnet::Message::Base, Socket::IPAddress?) -> Nil
+    @broadcast_callbacks = [] of (BACnet::Message::Base, Socket::IPAddress | Bytes?) -> Nil
   end
 
   @invoke_id : UInt8
@@ -46,14 +46,14 @@ class BACnet::Client::IPv4
   {% begin %}
     {% expects_reply = %w(WriteProperty ReadProperty) %}
     {% for klass in %w(IAm IHave WriteProperty ReadProperty ComplexAck) %}
-      def {{klass.underscore.id}}(*args, ip_address : Socket::IPAddress? = nil, **opts)
-        raise ArgumentError.new("ip_address argument required for IPv4 clients") unless ip_address
+      def {{klass.underscore.id}}(*args, link_address : Socket::IPAddress | Bytes? = nil, **opts)
+        raise ArgumentError.new("link_address should be an IP Address") unless link_address.is_a?(Socket::IPAddress)
         message = configure_defaults Client::Message::{{klass.id}}.build(new_message, *args, **opts)
 
         {% if expects_reply.includes?(klass) %}
-          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, ip_address, message))
+          send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, link_address, message))
         {% else %}
-          @on_transmit.try &.call(message, ip_address)
+          @on_transmit.try &.call(message, link_address)
         {% end %}
       end
 
@@ -79,7 +79,7 @@ class BACnet::Client::IPv4
     @request_callbacks << callback
   end
 
-  def on_broadcast(&callback : (BACnet::Message::Base, Socket::IPAddress?) -> Nil)
+  def on_broadcast(&callback : (BACnet::Message::Base, Socket::IPAddress | Bytes?) -> Nil)
     @broadcast_callbacks << callback
   end
 

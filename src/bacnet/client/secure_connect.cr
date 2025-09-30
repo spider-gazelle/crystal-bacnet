@@ -15,7 +15,7 @@ class BACnet::Client::SecureConnect
     @in_flight = {} of UInt8 => Tracker
     @control_callbacks = [] of (BACnet::Message::Secure) -> Nil
     @request_callbacks = [] of (BACnet::Message::Secure) -> Nil
-    @broadcast_callbacks = [] of (BACnet::Message::Base, Socket::IPAddress?) -> Nil
+    @broadcast_callbacks = [] of (BACnet::Message::Base, Socket::IPAddress | Bytes?) -> Nil
   end
 
   @invoke_id : UInt8
@@ -79,14 +79,6 @@ class BACnet::Client::SecureConnect
     data_link.request_type = BACnet::Message::Secure::Request::EncapsulatedNPDU
     data_link.source_specifier = true
     data_link.source_vmac = @vmac
-
-    # we grab the destination from the message NPDU
-    # this should always match the BVLCI
-    if (network = message.network) && network.destination_specifier
-      data_link.destination_specifier = true
-      data_link.destination_vmac = network.destination.address
-    end
-
     data_link.message_id = next_message_id
 
     app = message.application
@@ -118,8 +110,10 @@ class BACnet::Client::SecureConnect
   {% begin %}
     {% expects_reply = %w(WriteProperty ReadProperty) %}
     {% for klass in %w(IAm IHave WriteProperty ReadProperty ComplexAck) %}
-      def {{klass.underscore.id}}(*args, ip_address : Socket::IPAddress? = nil, **opts)
+      def {{klass.underscore.id}}(*args, link_address : Socket::IPAddress | Bytes? = nil, **opts)
+        raise ArgumentError.new("link_address should be VMAC bytes") unless link_address.is_a?(Bytes)
         message = configure_defaults Client::Message::{{klass.id}}.build(new_message, *args, **opts)
+        message.data_link.destination_address = link_address
 
         {% if expects_reply.includes?(klass) %}
           send_and_retry(Tracker.new(message.application.as(ConfirmedRequest).invoke_id.not_nil!, message))
@@ -154,7 +148,7 @@ class BACnet::Client::SecureConnect
     @request_callbacks << callback
   end
 
-  def on_broadcast(&callback : (BACnet::Message::Base, Socket::IPAddress?) -> Nil)
+  def on_broadcast(&callback : (BACnet::Message::Base, Socket::IPAddress | Bytes?) -> Nil)
     @broadcast_callbacks << callback
   end
 
@@ -174,7 +168,7 @@ class BACnet::Client::SecureConnect
     in BACnet::ConfirmedRequest
       spawn { @request_callbacks.each &.call(message) }
     in BACnet::UnconfirmedRequest
-      spawn { @broadcast_callbacks.each &.call(message, nil) }
+      spawn { @broadcast_callbacks.each &.call(message, message.data_link.source_vmac) }
     in BACnet::ErrorResponse, BACnet::AbortCode, BACnet::RejectResponse
       if tracker = @mutex.synchronize { @in_flight.delete(app.invoke_id) }
         if app.is_a?(ErrorResponse)
