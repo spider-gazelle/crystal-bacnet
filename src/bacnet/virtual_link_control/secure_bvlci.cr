@@ -73,10 +73,15 @@ module BACnet
         field code : UInt16
 
         remaining_bytes :message_bytes
+      end
+    end
 
-        def message
-          String.new(message_bytes)
-        end
+    def error_message : String
+      return "no error" unless result.result_code > 0
+      msg = String.new(result.error.message_bytes)
+      String.build do |str|
+        str << String.new(result.error.message_bytes)
+        str << " (class: #{result.error.class}, code: #{result.error.code})"
       end
     end
 
