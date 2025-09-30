@@ -160,7 +160,7 @@ class BACnet::Client::DeviceRegistry
 
     @mutex.synchronize do
       if @devices.has_key?(device_id)
-        BACnet.logger.debug { "ignoring inspect request as already parsed #{device_id} (#{link_address})" }
+        log.debug { "ignoring inspect request as already parsed #{device_id} (#{link_address})" }
         return
       end
     end
@@ -172,21 +172,21 @@ class BACnet::Client::DeviceRegistry
       name_resp = @client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, network, address, link_address: link_address).get
       device.name = @client.parse_complex_ack(name_resp)[:objects][0].value.as(String)
     rescue error
-      BACnet.logger.warn(exception: error) { "failed to obtain device name for #{print_addr(device)}: #{device.object_type}[#{device.instance_id}]" }
+      log.warn(exception: error) { "failed to obtain device name for #{print_addr(device)}: #{device.object_type}[#{device.instance_id}]" }
     end
 
     begin
       name_resp = @client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::VendorName, nil, network, address, link_address: link_address).get
       device.vendor_name = @client.parse_complex_ack(name_resp)[:objects][0].value.as(String)
     rescue error
-      BACnet.logger.warn(exception: error) { "failed to obtain vendor name for #{print_addr(device)}: #{device.object_type}[#{device.instance_id}]" }
+      log.warn(exception: error) { "failed to obtain vendor name for #{print_addr(device)}: #{device.object_type}[#{device.instance_id}]" }
     end
 
     begin
       name_resp = @client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ModelName, nil, network, address, link_address: link_address).get
       device.model_name = @client.parse_complex_ack(name_resp)[:objects][0].value.as(String)
     rescue error
-      BACnet.logger.warn(exception: error) { "failed to obtain model name for #{print_addr(device)}: #{device.object_type}[#{device.instance_id}]" }
+      log.warn(exception: error) { "failed to obtain model name for #{print_addr(device)}: #{device.object_type}[#{device.instance_id}]" }
     end
 
     # Grab the number of properties
@@ -217,7 +217,7 @@ class BACnet::Client::DeviceRegistry
     device
   rescue error
     @mutex.synchronize { @devices.delete(device_id) }
-    BACnet.logger.debug(exception: error) { "failed to obtain object list for #{device_id} (#{link_address})" }
+    log.debug(exception: error) { "failed to obtain object list for #{device_id} (#{link_address})" }
     nil
   end
 
@@ -227,10 +227,10 @@ class BACnet::Client::DeviceRegistry
     object = ObjectInfo.new(details[:objects][0].to_object_id, device.network, device.address, link_address: device.link_address)
     device.objects << object
 
-    BACnet.logger.trace { "new object found at address #{print_addr(object)}: #{object.object_type}-#{object.instance_id}" }
+    log.trace { "new object found at address #{print_addr(object)}: #{object.object_type}-#{object.instance_id}" }
     true
   rescue error
-    BACnet.logger.error(exception: error) { "failed to query device at address #{print_addr(device)}: ObjectList[#{index}]" }
+    log.error(exception: error) { "failed to query device at address #{print_addr(device)}: ObjectList[#{index}]" }
     false
   end
 
@@ -255,14 +255,14 @@ class BACnet::Client::DeviceRegistry
   ]
 
   def parse_object_info(object)
-    BACnet.logger.trace { "parsing object info for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+    log.trace { "parsing object info for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
 
     # All objects have a name
     begin
       name_resp = @client.read_property(object.object_ptr, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, object.network, object.address, link_address: object.link_address).get
       object.name = @client.parse_complex_ack(name_resp)[:objects][0].value.as(String)
     rescue error
-      BACnet.logger.error(exception: error) { "failed to obtain object information for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+      log.error(exception: error) { "failed to obtain object information for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
       return
     end
 
@@ -273,7 +273,7 @@ class BACnet::Client::DeviceRegistry
         object.unit = BACnet::Unit.new @client.parse_complex_ack(unit_resp)[:objects][0].to_i
       rescue unknown : BACnet::UnknownPropertyError
       rescue error
-        BACnet.logger.error(exception: error) { "failed to obtain unit for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+        log.error(exception: error) { "failed to obtain unit for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
       end
     end
 
@@ -284,12 +284,12 @@ class BACnet::Client::DeviceRegistry
         object.value = @client.parse_complex_ack(value_resp)[:objects][0]?.try &.as(BACnet::Object)
       rescue unknown : BACnet::UnknownPropertyError
       rescue error
-        BACnet.logger.error(exception: error) { "failed to obtain value for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
+        log.error(exception: error) { "failed to obtain value for #{print_addr(object)}: #{object.object_type}[#{object.instance_id}]" }
       end
     end
 
     object.ready = true
-    BACnet.logger.trace { "object #{print_addr(object)}: #{object.object_type}-#{object.instance_id} parsing complete" }
+    log.trace { "object #{print_addr(object)}: #{object.object_type}-#{object.instance_id} parsing complete" }
   end
 
   protected def print_addr(object)
