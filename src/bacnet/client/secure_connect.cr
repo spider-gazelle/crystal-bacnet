@@ -42,8 +42,6 @@ class BACnet::Client::SecureConnect
   def connect!
     data_link = BACnet::Message::Secure::BVLCI.new
     data_link.request_type = BACnet::Message::Secure::Request::ConnectRequest
-    data_link.source_specifier = true
-    data_link.source_vmac = @vmac
     data_link.message_id = next_message_id
     data_link.connect_details.vmac = @vmac
     data_link.connect_details.device_uuid = @uuid.bytes.to_slice
