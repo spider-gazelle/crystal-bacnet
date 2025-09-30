@@ -14,7 +14,7 @@ module BACnet::Client::Message::WhoIs
     if net
       net.destination_specifier = true
       net.destination.network = network
-      net.hop_count = 254_u8
+      net.hop_count = 255_u8
     end
 
     application = UnconfirmedRequest.new

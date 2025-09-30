@@ -79,6 +79,14 @@ class BACnet::Client::SecureConnect
     data_link.request_type = BACnet::Message::Secure::Request::EncapsulatedNPDU
     data_link.source_specifier = true
     data_link.source_vmac = @vmac
+
+    # we grab the destination from the message NPDU
+    # this should always match the BVLCI
+    if (network = message.network) && network.destination_specifier
+      data_link.destination_specifier = true
+      data_link.destination_vmac = network.destination.address
+    end
+
     data_link.message_id = next_message_id
 
     app = message.application
@@ -128,6 +136,10 @@ class BACnet::Client::SecureConnect
 
   def who_is(*args, **opts)
     message = configure_defaults Client::Message::WhoIs.build(new_message, *args, **opts)
+    data_link = message.data_link
+    data_link.destination_specifier = true
+    data_link.destination_vmac = BACnet::Message::Secure::BVLCI::BROADCAST_VMAC
+
     @on_transmit.try &.call(message)
   end
 

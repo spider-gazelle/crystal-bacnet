@@ -32,8 +32,6 @@ module BACnet
       end
     end
 
-    # NOTE:: a UUID constant needs to be generated
-
     field request_type : Request = Request::BVCLResult
     bit_field do
       # true == network layer message, message type field is present
@@ -111,6 +109,54 @@ module BACnet
       field vendor_id : UInt16
       field type : UInt8
       remaining_bytes :data
+    end
+
+    def destination_address
+      return nil unless destination_specifier
+      destination_vmac.hexstring
+    end
+
+    def destination_address=(address : String | Bytes?)
+      case address
+      in String
+        self.destination_vmac = address.hexbytes
+        self.destination_specifier = true
+      in Bytes
+        self.destination_vmac = address
+        self.destination_specifier = true
+      in Nil
+        self.destination_vmac = Bytes.new(0)
+        self.destination_specifier = false
+      end
+
+      address
+    end
+
+    BROADCAST_VMAC = Bytes[0xFF_u8, 0xFF_u8, 0xFF_u8, 0xFF_u8, 0xFF_u8, 0xFF_u8]
+
+    def destination_broadcast?
+      destination_specifier && destination_vmac == BROADCAST_VMAC
+    end
+
+    def source_address
+      return nil unless source_specifier
+      source_vmac.hexstring
+    end
+
+    def source_address=(address : String | Bytes?)
+      case address
+      in String
+        self.source_vmac = address.hexbytes
+        self.source_specifier = true
+      in Bytes
+        self.source_vmac = address
+        self.source_specifier = true
+      in Nil
+        self.source_vmac = Bytes.new(0)
+        self.source_specifier = false
+      end
+
+      address
     end
   end
 end

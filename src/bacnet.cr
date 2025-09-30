@@ -51,7 +51,7 @@ module BACnet
   enum ConfirmedService : UInt8
     # Alarm and Event Services
     AcknowledgeAlarm     = 0
-    CovNotification      = 1
+    CovNotification      = 1 # change of value
     EventNotification    = 2
     GetAlarmSummary      = 3
     GetEnrollmentSummary = 4
@@ -103,7 +103,7 @@ module BACnet
   enum UnconfirmedService : UInt8
     IAm                     =  0
     IHave                   =  1
-    CovNotification         =  2
+    CovNotification         =  2 # change of value
     EventNotification       =  3
     PrivateTransfer         =  4
     TextMessage             =  5
