@@ -164,7 +164,7 @@ class BACnet::Client::SecureConnect
     in BACnet::ConfirmedRequest
       spawn { @request_callbacks.each &.call(message) }
     in BACnet::UnconfirmedRequest
-      spawn { @broadcast_callbacks.each &.call(message) }
+      spawn { @broadcast_callbacks.each &.call(message, nil) }
     in BACnet::ErrorResponse, BACnet::AbortCode, BACnet::RejectResponse
       if tracker = @mutex.synchronize { @in_flight.delete(app.invoke_id) }
         if app.is_a?(ErrorResponse)
