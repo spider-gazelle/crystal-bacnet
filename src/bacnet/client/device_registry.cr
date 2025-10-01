@@ -227,8 +227,7 @@ class BACnet::Client::DeviceRegistry
 
     # we'll continue down the tree of objects when dealing with gateways
     object_id = details[:objects][0].to_object_id
-    obj_type = object_id.object_type
-    if obj_type.is_a?(BACnet::ObjectIdentifier::ObjectType) && obj_type.device?
+    if object_id.object_value == ObjectIdentifier::ObjectType::Device.to_u16
       inspect_device(object_id, device.network, device.address, link_address: device.link_address)
     else
       object = ObjectInfo.new(object_id, device.network, device.address, link_address: device.link_address)
