@@ -224,10 +224,18 @@ class BACnet::Client::DeviceRegistry
   protected def query_device(device, index, max_index)
     response = @client.read_property(device.object_ptr, BACnet::PropertyIdentifier::PropertyType::ObjectList, index, device.network, device.address, link_address: device.link_address).get
     details = @client.parse_complex_ack(response)
-    object = ObjectInfo.new(details[:objects][0].to_object_id, device.network, device.address, link_address: device.link_address)
-    device.objects << object
 
-    log.trace { "new object found at address #{print_addr(object)}: #{object.object_type}-#{object.instance_id}" }
+    # we'll continue down the tree of objects when dealing with gateways
+    object_id = details[:objects][0].to_object_id
+    obj_type = object_id.object_type
+    if obj_type.is_a?(BACnet::ObjectIdentifier::ObjectType) && obj_type.device?
+      inspect_device(object_id, device.network, device.address, link_address: device.link_address)
+    else
+      object = ObjectInfo.new(object_id, device.network, device.address, link_address: device.link_address)
+      device.objects << object
+      log.trace { "new object found at address #{print_addr(object)}: #{object.object_type}-#{object.instance_id}" }
+    end
+
     true
   rescue error
     log.error(exception: error) { "failed to query device at address #{print_addr(device)}: ObjectList[#{index}]" }
