@@ -148,7 +148,25 @@ class DeviceDetailsExample
     # Read object list size
     max_properties = begin
       result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, 0, nil, nil, link_address: @target_vmac).get
-      client.parse_complex_ack(result)[:objects][0].to_u64
+      obj_list_item = client.parse_complex_ack(result)[:objects][0]
+
+      # Check if the device incorrectly returned a string instead of an integer
+      # Tag 7 = CharacterString, Tag 2 = UnsignedInteger
+      if obj_list_item.tag == 7
+        string_value = obj_list_item.to_encoded_string
+        Log.warn { "Device [#{@device_id}] returned string '#{string_value}' for ObjectList[0] instead of count" }
+
+        # Try to parse the string as a number
+        if parsed_count = string_value.to_u64?
+          Log.info { "Successfully parsed object count #{parsed_count} from string" }
+          parsed_count
+        else
+          Log.warn { "Unable to parse object count from string '#{string_value}', using 0" }
+          0_u64
+        end
+      else
+        obj_list_item.to_u64
+      end
     rescue error
       Log.warn(exception: error) { "Failed to read object list size" }
       0_u64

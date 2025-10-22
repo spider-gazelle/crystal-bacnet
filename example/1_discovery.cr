@@ -217,7 +217,7 @@ class DiscoveryExample
 
     # Query device name
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac_bytes).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac_bytes.not_nil!).get
       device.object_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
     rescue error
       Log.debug(exception: error) { "Failed to read object_name for device [#{device.device_instance}]" }
@@ -225,7 +225,7 @@ class DiscoveryExample
 
     # Query vendor name
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::VendorName, nil, nil, nil, link_address: device.vmac_bytes).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::VendorName, nil, nil, nil, link_address: device.vmac_bytes.not_nil!).get
       device.vendor_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
     rescue error
       Log.debug(exception: error) { "Failed to read vendor_name for device [#{device.device_instance}]" }
@@ -233,7 +233,7 @@ class DiscoveryExample
 
     # Query model name
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ModelName, nil, nil, nil, link_address: device.vmac_bytes).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ModelName, nil, nil, nil, link_address: device.vmac_bytes.not_nil!).get
       device.model_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
     rescue error
       Log.debug(exception: error) { "Failed to read model_name for device [#{device.device_instance}]" }
@@ -241,7 +241,7 @@ class DiscoveryExample
 
     # Query object list to find sub-devices
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, 0, nil, nil, link_address: device.vmac_bytes).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, 0, nil, nil, link_address: device.vmac_bytes.not_nil!).get
       obj_list_item = client.parse_complex_ack(result)[:objects][0]
 
       # Check if the device incorrectly returned a string instead of an integer
@@ -274,7 +274,7 @@ class DiscoveryExample
       failed = 0
       (2..max_objects).each do |index|
         begin
-          result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, index, nil, nil, link_address: device.vmac_bytes).get
+          result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, index, nil, nil, link_address: device.vmac_bytes.not_nil!).get
           obj_id = client.parse_complex_ack(result)[:objects][0].to_object_id
 
           # If this is a device object, it's a sub-device
@@ -300,7 +300,7 @@ class DiscoveryExample
 
               # Query the sub-device name
               begin
-                result = client.read_property(obj_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac_bytes).get
+                result = client.read_property(obj_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac_bytes.not_nil!).get
                 sub_device.object_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
               rescue error
                 Log.debug(exception: error) { "Failed to read sub-device name for [#{obj_id.instance_number}]" }
@@ -326,22 +326,25 @@ class DiscoveryExample
     end
   end
 
-  # Discover parent-child relationships by grouping devices with the same VMAC
-  # Devices sharing a VMAC are part of a gateway hierarchy, where the device
-  # with the lowest instance number is the parent (gateway) and others are sub-devices
+  # Discover parent-child relationships by grouping devices with the same network identifier
+  # For BACnet/SC: Devices sharing a VMAC are part of a gateway hierarchy
+  # For BACnet/IP: Devices on the same network can be grouped by IP address
+  # The device with the lowest instance number is the parent (gateway) and others are sub-devices
   protected def discover_device_hierarchy
-    # Group devices by VMAC
-    devices_by_vmac = {} of String => Array(BACnet::DiscoveryStore::Device)
+    # Group devices by network identifier (VMAC for BACnet/SC, IP for BACnet/IP)
+    devices_by_network = {} of String => Array(BACnet::DiscoveryStore::Device)
 
     store.all_devices.each do |device|
-      vmac = device.vmac
-      devices_by_vmac[vmac] ||= [] of BACnet::DiscoveryStore::Device
-      devices_by_vmac[vmac] << device
+      network_id = device.network_id
+      next if network_id.empty?
+
+      devices_by_network[network_id] ||= [] of BACnet::DiscoveryStore::Device
+      devices_by_network[network_id] << device
     end
 
-    # Process each VMAC group
-    devices_by_vmac.each do |vmac, devices|
-      # Skip if only one device on this VMAC
+    # Process each network group
+    devices_by_network.each do |network_id, devices|
+      # Skip if only one device on this network
       next if devices.size <= 1
 
       # Sort by instance number to find parent (lowest instance)
@@ -349,7 +352,7 @@ class DiscoveryExample
       parent = devices.first
       sub_devices = devices[1..]
 
-      Log.info { "Discovered device hierarchy on VMAC #{vmac}: parent [#{parent.device_instance}] with #{sub_devices.size} sub-devices" }
+      Log.info { "Discovered device hierarchy on network #{network_id}: parent [#{parent.device_instance}] with #{sub_devices.size} sub-devices" }
 
       # Mark sub-devices and add to parent
       sub_devices.each do |sub_device|

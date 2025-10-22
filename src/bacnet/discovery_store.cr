@@ -6,12 +6,14 @@ require "../bacnet"
 module BACnet
   module DiscoveryStore
     # Represents a discovered BACnet device
+    # Supports both BACnet/SC (using VMAC) and BACnet/IP (using IP address)
     class Device
       include JSON::Serializable
 
       def initialize(
         @device_instance : UInt32,
-        @vmac : String,
+        @vmac : String? = nil,
+        @ip_address : String? = nil,
         @max_apdu_length : UInt64? = nil,
         @segmentation_supported : String? = nil,
         @vendor_id : UInt64? = nil,
@@ -24,7 +26,8 @@ module BACnet
       end
 
       property device_instance : UInt32
-      property vmac : String
+      property vmac : String?
+      property ip_address : String?
       property max_apdu_length : UInt64?
       property segmentation_supported : String?
       property vendor_id : UInt64?
@@ -44,12 +47,13 @@ module BACnet
       # Sub-devices (for gateway devices)
       property sub_devices : Array(Device) = [] of Device
 
-      def vmac_hex : String
+      # BACnet/SC specific methods (VMAC)
+      def vmac_hex : String?
         @vmac
       end
 
-      def vmac_bytes : Bytes
-        @vmac.hexbytes
+      def vmac_bytes : Bytes?
+        @vmac.try(&.hexbytes)
       end
 
       # Check if this device is a sub-device
@@ -60,6 +64,12 @@ module BACnet
       # Check if this device is a parent (has sub-devices)
       def parent? : Bool
         !@sub_devices.empty?
+      end
+
+      # Returns the network identifier for this device
+      # For BACnet/SC this is the VMAC, for BACnet/IP this is the IP address
+      def network_id : String
+        @vmac || @ip_address || ""
       end
     end
 

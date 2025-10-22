@@ -43,8 +43,33 @@ module BACnet
         )
 
         bytes = device.vmac_bytes
+        bytes.should_not be_nil
         bytes.should eq("22062a1b6dcb".hexbytes)
-        bytes.size.should eq(6)
+        bytes.not_nil!.size.should eq(6)
+      end
+
+      it "should support BACnet/IP with IP address" do
+        device = DiscoveryStore::Device.new(
+          device_instance: 1001_u32,
+          ip_address: "192.168.1.100"
+        )
+
+        device.device_instance.should eq(1001_u32)
+        device.ip_address.should eq("192.168.1.100")
+        device.vmac.should be_nil
+        device.network_id.should eq("192.168.1.100")
+      end
+
+      it "should support BACnet/SC with VMAC" do
+        device = DiscoveryStore::Device.new(
+          device_instance: 2803_u32,
+          vmac: "22062a1b6dcb"
+        )
+
+        device.device_instance.should eq(2803_u32)
+        device.vmac.should eq("22062a1b6dcb")
+        device.ip_address.should be_nil
+        device.network_id.should eq("22062a1b6dcb")
       end
 
       it "should track sub-device status" do

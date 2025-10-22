@@ -11,10 +11,6 @@ module BACnet
           # server.send message, to: address
         end
       end
-      registry = BACnet::Client::DeviceRegistry.new(client)
-      registry.on_new_device do |device|
-        puts "FOUND NEW DEVICE: #{device.vendor_name} #{device.name} #{device.model_name}"
-      end
     end
 
     it "should work with SecureConnect" do
@@ -25,10 +21,6 @@ module BACnet
       client.connect!
       client.on_control_info do |message|
         if message.data_link.request_type.connect_accept?
-          registry = BACnet::Client::DeviceRegistry.new(client)
-          registry.on_new_device do |device|
-            puts "FOUND NEW DEVICE: #{device.vendor_name} #{device.name} #{device.model_name}"
-          end
         end
       end
     end
