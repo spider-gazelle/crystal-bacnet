@@ -1,5 +1,4 @@
 require "../src/bacnet"
-require "./discovery_store"
 require "http"
 require "uuid"
 
@@ -32,13 +31,13 @@ class DiscoveryExample
     @tls = tls
 
     @client = BACnet::Client::SecureConnect.new(uuid: @uuid)
-    @store = DiscoveryStore::Store.new
+    @store = BACnet::DiscoveryStore::Store.new
     @last_response = Time.utc
     @connected = Channel(Nil).new
   end
 
   getter client : BACnet::Client::SecureConnect
-  getter store : DiscoveryStore::Store
+  getter store : BACnet::DiscoveryStore::Store
   getter host : String
   getter path : String
   getter tls : OpenSSL::SSL::Context::Client
@@ -46,6 +45,7 @@ class DiscoveryExample
   @last_response : Time
   @discovery_complete : Channel(Nil) = Channel(Nil).new
   @connected : Channel(Nil)
+  @pending_queries : Atomic(Int32) = Atomic.new(0)
 
   def run!
     ws = HTTP::WebSocket.new(@host, @path, tls: @tls, headers: HTTP::Headers{
@@ -89,6 +89,36 @@ class DiscoveryExample
     # Wait for discovery to complete
     spawn do
       @discovery_complete.receive?
+
+      # Wait for all pending device queries to complete
+      pending = @pending_queries.get
+      Log.info { "Discovery timeout reached, waiting for #{pending} device queries to complete..." }
+
+      # Wait up to 20 seconds for queries to complete
+      timeout_at = Time.utc + 20.seconds
+      loop do
+        break if @pending_queries.get == 0
+        break if Time.utc > timeout_at
+
+        if @pending_queries.get != pending
+          pending = @pending_queries.get
+          Log.info { "#{pending} queries still pending..." }
+        end
+
+        sleep 0.5.seconds
+      end
+
+      final_pending = @pending_queries.get
+      if final_pending > 0
+        Log.warn { "Timed out waiting for #{final_pending} device queries, displaying results anyway..." }
+      else
+        Log.info { "All device queries complete, discovering hierarchy..." }
+      end
+
+      # Discover parent-child relationships by grouping devices with same VMAC
+      discover_device_hierarchy
+
+      Log.info { "Displaying results..." }
       print_discovered_devices
       ws.close
     end
@@ -146,18 +176,25 @@ class DiscoveryExample
     # Don't re-process devices we've already seen
     return if store.has_device?(device_instance)
 
-    device = DiscoveryStore::Device.new(
+    device = BACnet::DiscoveryStore::Device.new(
       device_instance: device_instance,
-      vmac: vmac,
+      vmac: vmac.hexstring,
       max_apdu_length: details[:max_adpu_length],
-      segmentation_supported: details[:segmentation_supported],
+      segmentation_supported: details[:segmentation_supported].to_s,
       vendor_id: details[:vendor_id]
     )
 
     store.add_device(device)
 
     # Query device details in background
-    spawn { query_device_details(device) }
+    @pending_queries.add(1)
+    spawn do
+      begin
+        query_device_details(device)
+      ensure
+        @pending_queries.sub(1)
+      end
+    end
   end
 
   protected def process_i_have(message : BACnet::Message::Secure)
@@ -170,7 +207,9 @@ class DiscoveryExample
     Log.debug { "Received IHave for device [#{device_instance}]" }
   end
 
-  protected def query_device_details(device : DiscoveryStore::Device)
+  protected def query_device_details(device : BACnet::DiscoveryStore::Device)
+    Log.info { "Querying details for device [#{device.device_instance}]" }
+
     object_id = BACnet::ObjectIdentifier.new(
       object_type: BACnet::ObjectIdentifier::ObjectType::Device,
       instance_number: device.device_instance
@@ -178,7 +217,7 @@ class DiscoveryExample
 
     # Query device name
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac_bytes).get
       device.object_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
     rescue error
       Log.debug(exception: error) { "Failed to read object_name for device [#{device.device_instance}]" }
@@ -186,7 +225,7 @@ class DiscoveryExample
 
     # Query vendor name
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::VendorName, nil, nil, nil, link_address: device.vmac).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::VendorName, nil, nil, nil, link_address: device.vmac_bytes).get
       device.vendor_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
     rescue error
       Log.debug(exception: error) { "Failed to read vendor_name for device [#{device.device_instance}]" }
@@ -194,7 +233,7 @@ class DiscoveryExample
 
     # Query model name
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ModelName, nil, nil, nil, link_address: device.vmac).get
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ModelName, nil, nil, nil, link_address: device.vmac_bytes).get
       device.model_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
     rescue error
       Log.debug(exception: error) { "Failed to read model_name for device [#{device.device_instance}]" }
@@ -202,37 +241,79 @@ class DiscoveryExample
 
     # Query object list to find sub-devices
     begin
-      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, 0, nil, nil, link_address: device.vmac).get
-      max_objects = client.parse_complex_ack(result)[:objects][0].to_u64
+      result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, 0, nil, nil, link_address: device.vmac_bytes).get
+      obj_list_item = client.parse_complex_ack(result)[:objects][0]
+
+      # Check if the device incorrectly returned a string instead of an integer
+      # Tag 7 = CharacterString, Tag 2 = UnsignedInteger
+      if obj_list_item.tag == 7
+        string_value = obj_list_item.to_encoded_string
+        Log.warn { "Device [#{device.device_instance}] returned string '#{string_value}' for ObjectList[0] instead of count" }
+
+        # Try to parse the string as a number
+        if parsed_count = string_value.to_u64?
+          Log.info { "Successfully parsed object count #{parsed_count} from string for device [#{device.device_instance}]" }
+          max_objects = parsed_count
+        else
+          Log.warn { "Unable to parse object count from string '#{string_value}' for device [#{device.device_instance}], skipping object scan" }
+          return
+        end
+      else
+        max_objects = obj_list_item.to_u64
+      end
+
+      # Sanity check - if the count is unreasonably large, skip scanning
+      if max_objects > 10_000
+        Log.warn { "Device [#{device.device_instance}] reports #{max_objects} objects - unreasonably large, skipping object scan" }
+        return
+      end
+
+      Log.debug { "Scanning #{max_objects} objects on device [#{device.device_instance}] for sub-devices" }
 
       # Scan for sub-devices (Device objects in the object list)
       failed = 0
       (2..max_objects).each do |index|
         begin
-          result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, index, nil, nil, link_address: device.vmac).get
+          result = client.read_property(object_id, BACnet::PropertyIdentifier::PropertyType::ObjectList, index, nil, nil, link_address: device.vmac_bytes).get
           obj_id = client.parse_complex_ack(result)[:objects][0].to_object_id
 
           # If this is a device object, it's a sub-device
           obj_type = obj_id.object_type
+
           if obj_type && obj_type.device?
-            # Query the sub-device name
-            sub_device_name = begin
-              result = client.read_property(obj_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac).get
-              client.parse_complex_ack(result)[:objects][0].value.as(String)
-            rescue
-              ""
+            Log.debug { "Found Device object [#{obj_id.instance_number}] in ObjectList of device [#{device.device_instance}]" }
+            # Check if this device already exists in the store (from IAm message)
+            sub_device = store.get_device(obj_id.instance_number)
+
+            if sub_device
+              # Device already discovered via IAm, just update it
+              sub_device.parent_device_instance = device.device_instance
+              Log.info { "Marking existing device [#{obj_id.instance_number}] as sub-device of [#{device.device_instance}]" }
+            else
+              # Device not yet discovered, create new entry
+              sub_device = BACnet::DiscoveryStore::Device.new(
+                device_instance: obj_id.instance_number,
+                vmac: device.vmac,
+                parent_device_instance: device.device_instance
+              )
+              store.add_device(sub_device)
+
+              # Query the sub-device name
+              begin
+                result = client.read_property(obj_id, BACnet::PropertyIdentifier::PropertyType::ObjectName, nil, nil, nil, link_address: device.vmac_bytes).get
+                sub_device.object_name = client.parse_complex_ack(result)[:objects][0].value.as(String)
+              rescue error
+                Log.debug(exception: error) { "Failed to read sub-device name for [#{obj_id.instance_number}]" }
+              end
+
+              Log.debug { "Found new sub-device [#{obj_id.instance_number}] under device [#{device.device_instance}]" }
             end
 
-            sub_device = DiscoveryStore::Device.new(
-              device_instance: obj_id.instance_number,
-              vmac: device.vmac
-            )
-            sub_device.object_name = sub_device_name
+            # Add to parent's sub_devices array
             device.sub_devices << sub_device
-
-            Log.debug { "Found sub-device [#{obj_id.instance_number}] under device [#{device.device_instance}]" }
           else
-            device.objects << DiscoveryStore::ObjectReference.new(obj_id)
+            obj_type_str = obj_type.to_s
+            device.objects << BACnet::DiscoveryStore::ObjectReference.new(obj_type_str, obj_id.instance_number)
           end
         rescue error
           Log.trace(exception: error) { "Failed to read object at index #{index}" }
@@ -242,6 +323,40 @@ class DiscoveryExample
       end
     rescue error
       Log.debug(exception: error) { "Failed to read object_list for device [#{device.device_instance}]" }
+    end
+  end
+
+  # Discover parent-child relationships by grouping devices with the same VMAC
+  # Devices sharing a VMAC are part of a gateway hierarchy, where the device
+  # with the lowest instance number is the parent (gateway) and others are sub-devices
+  protected def discover_device_hierarchy
+    # Group devices by VMAC
+    devices_by_vmac = {} of String => Array(BACnet::DiscoveryStore::Device)
+
+    store.all_devices.each do |device|
+      vmac = device.vmac
+      devices_by_vmac[vmac] ||= [] of BACnet::DiscoveryStore::Device
+      devices_by_vmac[vmac] << device
+    end
+
+    # Process each VMAC group
+    devices_by_vmac.each do |vmac, devices|
+      # Skip if only one device on this VMAC
+      next if devices.size <= 1
+
+      # Sort by instance number to find parent (lowest instance)
+      devices.sort_by!(&.device_instance)
+      parent = devices.first
+      sub_devices = devices[1..]
+
+      Log.info { "Discovered device hierarchy on VMAC #{vmac}: parent [#{parent.device_instance}] with #{sub_devices.size} sub-devices" }
+
+      # Mark sub-devices and add to parent
+      sub_devices.each do |sub_device|
+        sub_device.parent_device_instance = parent.device_instance
+        parent.sub_devices << sub_device
+        Log.debug { "  └─ Sub-device [#{sub_device.device_instance}] #{sub_device.object_name.empty? ? "(unnamed)" : sub_device.object_name}" }
+      end
     end
   end
 
@@ -265,7 +380,7 @@ class DiscoveryExample
     puts "Secure Connect: wss://#{@host}#{@path}"
     puts ""
 
-    devices = store.all_devices
+    devices = store.top_level_devices
 
     if devices.empty?
       puts "  No devices discovered"
@@ -293,7 +408,7 @@ class DiscoveryExample
       puts ""
     end
 
-    puts "Total devices discovered: #{devices.size}"
+    puts "Total devices discovered: #{store.size}"
     puts "="*80
   end
 end

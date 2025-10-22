@@ -1,7 +1,7 @@
 require "bindata"
 
 module BACnet
-  Log = ::Log.for(self)
+  Log = ::Log.for("bacnet")
 
   class_property logger : ::Log = Log
 
