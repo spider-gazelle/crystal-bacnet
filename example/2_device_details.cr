@@ -236,7 +236,7 @@ class DeviceDetailsExample
     puts "Description: #{description}" unless description == "(unknown)"
     puts ""
 
-    if sub_devices.any?
+    if !sub_devices.empty?
       puts "Sub-Devices (#{sub_devices.size}):"
       sub_devices.each do |(obj_id, obj_name)|
         puts "  [#{obj_id.instance_number}] #{obj_name}"

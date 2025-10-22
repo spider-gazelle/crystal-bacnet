@@ -273,7 +273,7 @@ class ObjectInformationExample
       obj.to_encoded_string
     when 8 # BitString
       bits = obj.to_bit_string
-      (0...bits.size).map { |i| bits[i] ? "#{i}" : nil }.compact.join(", ")
+      (0...bits.size).compact_map { |i| bits[i] ? "#{i}" : nil }.join(", ")
     when 10 # Date
       obj.to_date.to_s
     when 11 # Time

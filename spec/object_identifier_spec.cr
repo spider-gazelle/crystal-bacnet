@@ -1,4 +1,4 @@
-require "./helper"
+require "./spec_helper"
 
 # ObjectIdentifier Serialization Tests
 #
@@ -250,9 +250,9 @@ module BACnet
         file = ObjectIdentifier.new(ObjectIdentifier::ObjectType::File, 100)
         analog = ObjectIdentifier.new(ObjectIdentifier::ObjectType::AnalogValue, 100)
 
-        device_bytes = IO::Memory.new.tap { |io| io.write_bytes device }.to_slice
-        file_bytes = IO::Memory.new.tap { |io| io.write_bytes file }.to_slice
-        analog_bytes = IO::Memory.new.tap { |io| io.write_bytes analog }.to_slice
+        device_bytes = IO::Memory.new.tap(&.write_bytes(device)).to_slice
+        file_bytes = IO::Memory.new.tap(&.write_bytes(file)).to_slice
+        analog_bytes = IO::Memory.new.tap(&.write_bytes(analog)).to_slice
 
         # All three should have different serialized bytes
         device_bytes.should_not eq(file_bytes)
@@ -276,11 +276,11 @@ module BACnet
 
         # Create a File object
         file = ObjectIdentifier.new(ObjectIdentifier::ObjectType::File, 1)
-        file_bytes = IO::Memory.new.tap { |io| io.write_bytes file }.to_slice
+        file_bytes = IO::Memory.new.tap(&.write_bytes(file)).to_slice
 
         # Create a Device object with same instance
         device = ObjectIdentifier.new(ObjectIdentifier::ObjectType::Device, 1)
-        device_bytes = IO::Memory.new.tap { |io| io.write_bytes device }.to_slice
+        device_bytes = IO::Memory.new.tap(&.write_bytes(device)).to_slice
 
         # File:1 should serialize as 0x02800001 (type=10, instance=1)
         # Device:1 should serialize as 0x02000001 (type=8, instance=1)

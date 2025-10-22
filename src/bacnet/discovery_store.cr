@@ -195,7 +195,7 @@ module BACnet
         pull.read_object do |key|
           case key
           when "devices"
-            pull.read_object do |device_id|
+            pull.read_object do |_device_id|
               device = Device.from_json(pull.read_raw)
               store.add_device(device)
             end
