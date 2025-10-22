@@ -27,6 +27,14 @@ class BACnet::Objects
     false
   end
 
+  def inspect(io)
+    objects.inspect(io)
+  end
+
+  def to_s(io)
+    inspect(io)
+  end
+
   {% for name in %w(value to_u64 to_u32 to_u16 to_u8 to_i64 to_i to_i32 to_i16 to_i8 to_bool to_f32 to_f64 to_string to_encoded_string to_bit_string to_date to_time to_object_id to_property_id) %}
     def {{name.id}}
       raise Error.new("#{ {{name}} } called on objects list, context_specific: #{context_specific}, tag: #{tag}")

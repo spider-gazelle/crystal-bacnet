@@ -7,6 +7,16 @@ module BACnet
     field ignore : UInt8
     remaining_bytes :bitdata
 
+    def to_s(io)
+      final = size - 1
+      io << "["
+      size.times do |index|
+        self[index].to_s(io)
+        io << ", " unless index == final
+      end
+      io << "]"
+    end
+
     def size
       bitdata.size * 8 - ignore
     end

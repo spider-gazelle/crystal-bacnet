@@ -467,5 +467,11 @@ module BACnet
     end
 
     field property_type : PropertyType = PropertyType::All
+
+    def to_s(io)
+      io << "<Prop type="
+      property_type.to_s(io)
+      io << ">"
+    end
   end
 end

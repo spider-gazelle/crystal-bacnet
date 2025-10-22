@@ -7,3 +7,7 @@ app
 *.dwarf
 *.DS_Store
 shard.lock
+private.key
+client.pem
+chain.pem
+bundle.p12

@@ -68,11 +68,13 @@ module BACnet
     end
 
     bit_field do
-      bits 10, object_value, value: -> { ObjectType::Device.to_u16 }
+      bits 10, :object_value
       bits 22, :instance_number
     end
 
     def initialize
+      @object_value = ObjectType::Device.to_u16
+      @instance_number = 0_u32
     end
 
     def initialize(object_type : ObjectType, instance_number : Int)
@@ -88,8 +90,9 @@ module BACnet
       self.object_value = object_type.to_u16
     end
 
-    def object_type : ObjectType | UInt16
-      ObjectType.from_value?(object_value) || object_value
+    # this is nil if a proprietary value, use object_value instead if expecting proprietary
+    def object_type : ObjectType?
+      ObjectType.from_value?(object_value)
     end
 
     def standard? : Bool
@@ -105,6 +108,18 @@ module BACnet
 
       io << "\b #type="
       object_type.to_s(io)
+      io << ">"
+    end
+
+    def to_s(io)
+      io << "<OID type="
+      if standard?
+        object_type.to_s(io)
+      else
+        object_value.to_s(io)
+      end
+      io << " inst="
+      instance_number.to_s(io)
       io << ">"
     end
   end
