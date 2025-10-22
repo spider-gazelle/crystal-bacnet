@@ -36,5 +36,9 @@ module BACnet
     def value(date = ::Time.local(@timezone))
       ::Time.local(date.year, date.month, date.day, hour(date), minute(date), second(date), nanosecond: nanosecond(date), location: @timezone)
     end
+
+    def to_s(io)
+      value.to_s(io, "%H:%M:%S.%6N")
+    end
   end
 end

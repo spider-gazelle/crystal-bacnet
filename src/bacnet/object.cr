@@ -136,6 +136,10 @@ class BACnet::Object < BinData
     end
   end
 
+  def to_s(io)
+    inspect(io)
+  end
+
   def is_null?
     !context_specific && tag == 0_u8
   end

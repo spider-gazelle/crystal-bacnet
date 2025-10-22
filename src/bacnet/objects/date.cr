@@ -44,5 +44,9 @@ module BACnet
         ::Time.local(year, month, day, location: @timezone)
       end
     end
+
+    def to_s(io)
+      value.to_s(io, "%Y-%m-%d")
+    end
   end
 end
